@@ -1,61 +1,86 @@
 import streamlit as st
-from langchain.agents import create_agent
+from langchain_ollama import ChatOllama
 
+# =====================================
+# PAGE CONFIG
+# =====================================
 
-def analyze_market(topic: str) -> str:
-    """Return a market analysis summary for the specified topic."""
-    return (
-        f"Market analysis for {topic}:\n"
-        "- Market structure: define the key segments, value chain, and competitive landscape.\n"
-        "- CAGR estimate: provide an illustrative compound annual growth rate based on market dynamics.\n"
-        "- Growth drivers: identify the main demand drivers and opportunities.\n"
-        "- Risks and challenges: summarize the key barriers and headwinds.\n"
-        "- Outlook: describe the expected direction and strategic focus areas."
-    )
-
-
-@st.cache_resource
-def create_market_agent():
-    return create_agent(
-        model="ollama:llama3.2:1b",
-        tools=[analyze_market],
-        system_prompt=(
-            "You are a market analysis assistant. For any topic given by the user, "
-            "focus on market structure, competitive segments, growth drivers, risks, "
-            "and an estimated CAGR outlook. Use the tool to generate a structured, "
-            "business-oriented market analysis response."
-        ),
-    )
-
-
-st.title("Market Analysis Agent")
-st.write(
-    "Enter a market topic and the assistant will analyze market structure, CAGR, "
-    "drivers, risks, and outlook for that topic."
+st.set_page_config(
+    page_title="Market Analysis Agent",
+    page_icon="📊",
+    layout="wide"
 )
 
-topic = st.text_input("Market topic", "renewable energy industry")
-run = st.button("Analyze market")
+# =====================================
+# HEADER
+# =====================================
 
-agent = create_market_agent()
+st.title("📊 Market Analysis Agent")
+st.write("Enter a market and generate a market analysis report.")
 
-if run:
-    if not topic.strip():
+# =====================================
+# LOAD MODEL
+# =====================================
+
+@st.cache_resource
+def load_model():
+    return ChatOllama(
+        model="qwen3:4b",
+        temperature=0.3
+    )
+
+# =====================================
+# MODEL INIT
+# =====================================
+
+try:
+    llm = load_model()
+    st.success("✅ Qwen3:4B Loaded Successfully")
+except Exception as e:
+    st.error(f"❌ Failed to load Ollama model:\n\n{e}")
+    st.stop()
+
+# =====================================
+# USER INPUT
+# =====================================
+
+market = st.text_input(
+    "Market Topic",
+    placeholder="Electric Vehicle Market"
+)
+
+# =====================================
+# ANALYZE BUTTON
+# =====================================
+
+if st.button("Analyze Market"):
+
+    if not market.strip():
         st.warning("Please enter a market topic.")
-    else:
-        result_box = st.empty()
-        result_box.markdown("### Analysis in progress...")
-        result_text = ""
-        inputs = {
-            "messages": [
-                {
-                    "role": "user",
-                    "content": f"Please analyze the market structure and CAGR for the {topic}."
-                }
-            ]
-        }
-        for chunk in agent.stream(inputs, stream_mode="updates"):
-            result_text += str(chunk)
-            result_box.code(result_text)
-        if not result_text:
-            result_box.info("The agent did not return any analysis.")
+        st.stop()
+
+    prompt = f"""
+    Analyze the {market} market.
+
+    Include:
+    - Overview
+    - Estimated CAGR
+    - Major Players
+    - Growth Drivers
+    - Risks
+    - Future Outlook
+
+    Keep the report under 300 words.
+    """
+    try:
+
+        with st.spinner("Analyzing Market..."):
+
+            response = llm.invoke(prompt)
+
+        st.markdown("---")
+        st.markdown(response.content)
+
+    except Exception as e:
+
+        st.error(f"Analysis Error:\n\n{e}")
