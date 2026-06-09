@@ -2,7 +2,7 @@ import logging
 import streamlit as st
 from langchain.agents import create_agent
 from langchain_ollama import ChatOllama
-from opportunity_analysis import analyze_market, analyze_opportunity, analyze_competitors
+from opportunity_analysis import analyze_market, analyze_opportunity, analyze_competitors, deep_web_research
 from database import init_db, save_idea, get_all_ideas, delete_idea
 from judge import judge_idea
 from pain_points import gather_pain_points
@@ -20,12 +20,14 @@ logger = logging.getLogger(__name__)
 def create_market_agent():
     return create_agent(
         model="ollama:llama3.2:1b",
-        tools=[analyze_market, analyze_opportunity, analyze_competitors],
+        tools=[deep_web_research, analyze_market, analyze_opportunity, analyze_competitors],
         system_prompt=(
-            "You are a market, opportunity, and competitor analysis chatbot. Respond like a business analyst. "
-            "Use all three tools — analyze_market, analyze_opportunity, and analyze_competitors — to research "
-            "the startup idea. Cover market structure, CAGR, growth drivers, risks, market need, value proposition, "
-            "competitor landscape, strengths/weaknesses, and whitespace opportunities."
+            "You are a market, opportunity, and competitor analysis chatbot. "
+            "ALWAYS call deep_web_research FIRST to gather real-time data from the web. "
+            "Then use analyze_market, analyze_opportunity, and analyze_competitors "
+            "to structure your findings. Cover market structure, CAGR, growth drivers, risks, "
+            "market need, value proposition, competitor landscape, strengths/weaknesses, "
+            "and whitespace opportunities. Cite specific data from your web research."
         ),
     )
 
@@ -100,7 +102,7 @@ if submit_button and user_input.strip():
             st.session_state.current_topic = user_text
             log_debug(f"Scraping pain points for {user_text}...")
             
-            with st.spinner("🔍 Scraping Play Store & Reddit for user pain points..."):
+            with st.spinner("🌐 Deep-scraping 8 sources for domain pain points..."):
                 pain_points_text = gather_pain_points(user_text)
 
                 extraction_prompt = f"""/no_think
@@ -201,7 +203,7 @@ product/service, revenue model, differentiators, timing advantage, go-to-market>
                 
                 # STEP 4: Market Analysis
                 log_debug("Running market and opportunity analysis...")
-                with st.spinner("📊 Analyzing market, opportunity, and competitors..."):
+                with st.spinner("📊 Running live web research + market analysis..."):
                     analysis_inputs = {
                         "messages": [
                             {

@@ -1,4 +1,5 @@
 from langchain.tools import tool
+from web_research import deep_web_research
 
 @tool
 def analyze_market(topic: str) -> str:

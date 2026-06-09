@@ -1,7 +1,7 @@
 import streamlit as st
 from langchain.agents import create_agent
 from langchain_ollama import ChatOllama
-from opportunity_analysis import analyze_market, analyze_opportunity, analyze_competitors
+from opportunity_analysis import analyze_market, analyze_opportunity, analyze_competitors, deep_web_research
 from database import init_db, save_idea, get_all_ideas, delete_idea
 from judge import judge_idea
 from pain_points import gather_pain_points
@@ -74,13 +74,15 @@ st.write(
 def load_analysis_agent():
     return create_agent(
         model="ollama:qwen3:8b",
-        tools=[analyze_market, analyze_opportunity, analyze_competitors],
+        tools=[deep_web_research, analyze_market, analyze_opportunity, analyze_competitors],
         system_prompt=(
-            "You are an expert business analyst. Use ALL THREE tools — analyze_market, "
-            "analyze_opportunity, and analyze_competitors — to research the user's startup idea "
-            "thoroughly. Return a combined research brief (under 500 words) covering "
-            "market structure, CAGR, growth drivers, risks, market need, value proposition "
-            "opportunities, competitor landscape, their strengths/weaknesses, and whitespace gaps."
+            "You are an expert business analyst. ALWAYS call the deep_web_research tool FIRST "
+            "to gather real-time market data from the web. Then use analyze_market, "
+            "analyze_opportunity, and analyze_competitors to structure your findings. "
+            "Return a combined research brief (under 500 words) grounded in the live data "
+            "you gathered, covering market structure, CAGR, growth drivers, risks, "
+            "market need, value proposition, competitor landscape, strengths/weaknesses, "
+            "and whitespace gaps. Cite specific data points from your web research."
         ),
     )
 
@@ -118,7 +120,7 @@ if st.session_state.step == 0:
             st.warning("Please enter a market or domain.")
             st.stop()
 
-        with st.spinner("Scraping Play Store & Reddit for user pain points..."):
+        with st.spinner("🌐 Deep-scraping 8 sources for domain pain points (Play Store, Reddit, HN, Product Hunt, G2, Trustpilot, StackOverflow, blogs)..."):
             pain_points_text = gather_pain_points(st.session_state.market)
             st.session_state.raw_pain_points = pain_points_text
             
@@ -241,7 +243,7 @@ Keep it between 200-400 words.>
             st.rerun()
         st.stop()
 
-    with st.spinner("📊 Running market, opportunity, and competitor analysis on the new idea..."):
+    with st.spinner("📊 Running live web research + market, opportunity, and competitor analysis..."):
         analysis_inputs = {
             "messages": [
                 {
