@@ -23,3 +23,15 @@ def analyze_opportunity(topic: str) -> str:
         "- Competitive Edge: Highlight key differentiators and defensibility against competitors.\n"
         "- Execution Complexity: Note the key challenges, dependencies, and initial steps for implementation."
     )
+
+@tool
+def analyze_competitors(topic: str) -> str:
+    """Return a competitor analysis for the specified market or business domain."""
+    return (
+        f"Competitor analysis for {topic}:\n"
+        "- Top Competitors: List the 3-5 most relevant competitors (startups and incumbents).\n"
+        "- Strengths & Weaknesses: For each competitor, summarize their core strengths and key weaknesses.\n"
+        "- Market Positioning: Describe how each competitor is positioned (premium, budget, niche, etc.).\n"
+        "- Funding & Traction: Note any known funding rounds, user base, or revenue milestones.\n"
+        "- Whitespace Opportunities: Identify gaps or underserved segments that competitors are missing."
+    )
