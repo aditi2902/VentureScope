@@ -1,38 +1,112 @@
+"""
+Analysis Tools
+==============
+LangChain tools that perform real web searches to gather market,
+opportunity, and competitor data. Each tool uses DuckDuckGo to
+fetch live information rather than relying on LLM training data.
+"""
+
 from langchain.tools import tool
 from web_research import deep_web_research
+from ddgs import DDGS
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def _ddg_search(query: str, max_results: int = 3) -> str:
+    """Run a DuckDuckGo search and return formatted snippets."""
+    try:
+        ddgs = DDGS()
+        results = list(ddgs.text(query, max_results=max_results))
+        if not results:
+            return "No results found."
+        lines = []
+        for r in results:
+            title = r.get("title", "")
+            body = r.get("body", "")
+            lines.append(f"- **{title}**: {body}")
+        return "\n".join(lines)
+    except Exception as e:
+        logger.warning(f"DDG search failed for '{query}': {e}")
+        return "Search failed."
+
 
 @tool
 def analyze_market(topic: str) -> str:
-    """Return a market analysis summary for the specified topic."""
-    return (
-        f"Market analysis for {topic}:\n"
-        "- Market structure: define the key segments, value chain, and competitive landscape.\n"
-        "- CAGR estimate: provide an illustrative compound annual growth rate based on market dynamics.\n"
-        "- Growth drivers: identify the main demand drivers and opportunities.\n"
-        "- Risks and challenges: summarize the key barriers and headwinds.\n"
-        "- Outlook: describe the expected direction and strategic focus areas."
-    )
+    """Search the web for real market data about the specified topic including
+    market size, segments, CAGR, growth drivers, risks, and industry outlook.
+
+    Args:
+        topic: The market or industry to analyze (e.g. 'AI fitness coaching').
+
+    Returns:
+        A structured summary of real web search results covering market data.
+    """
+    queries = {
+        "Market Size & Structure": f'"{topic}" market size OR market value OR segments OR "value chain" 2025 OR 2026',
+        "CAGR & Growth Rate": f'"{topic}" CAGR OR "growth rate" OR "compound annual" forecast',
+        "Growth Drivers": f'"{topic}" growth drivers OR demand drivers OR opportunities OR trends',
+        "Risks & Challenges": f'"{topic}" risks OR challenges OR barriers OR headwinds OR threats',
+    }
+
+    report = f"## Market Analysis: {topic}\n\n"
+    for section, query in queries.items():
+        data = _ddg_search(query, max_results=2)
+        report += f"### {section}\n{data}\n\n"
+    print("MAr Ananlysis toll in use")
+    return report
+
 
 @tool
 def analyze_opportunity(topic: str) -> str:
-    """Return an opportunity analysis summary for the specified business opportunity or market topic."""
-    return (
-        f"Opportunity analysis for {topic}:\n"
-        "- Market Need: Describe the core customer pain point and target audience.\n"
-        "- Value Proposition: Detail the unique solution and key benefits to the customer.\n"
-        "- Revenue Streams: Outline potential business models, pricing, and monetization strategy.\n"
-        "- Competitive Edge: Highlight key differentiators and defensibility against competitors.\n"
-        "- Execution Complexity: Note the key challenges, dependencies, and initial steps for implementation."
-    )
+    """Search the web for business opportunity data about the specified topic
+    including customer pain points, value propositions, revenue models,
+    competitive advantages, and execution challenges.
+
+    Args:
+        topic: The business opportunity or market to evaluate.
+
+    Returns:
+        A structured summary of real web search results covering opportunity data.
+    """
+    queries = {
+        "Market Need & Pain Points": f'"{topic}" customer pain points OR unmet needs OR problems users face',
+        "Value Propositions": f'"{topic}" value proposition OR unique solution OR benefits OR innovation',
+        "Revenue Models": f'"{topic}" revenue model OR pricing OR monetization OR business model',
+        "Execution Challenges": f'"{topic}" execution challenges OR barriers to entry OR implementation difficulty',
+    }
+
+    report = f"## Opportunity Analysis: {topic}\n\n"
+    for section, query in queries.items():
+        data = _ddg_search(query, max_results=2)
+        report += f"### {section}\n{data}\n\n"
+    print("OPp Ananlysis toll in use")
+
+    return report
+
 
 @tool
 def analyze_competitors(topic: str) -> str:
-    """Return a competitor analysis for the specified market or business domain."""
-    return (
-        f"Competitor analysis for {topic}:\n"
-        "- Top Competitors: List the 3-5 most relevant competitors (startups and incumbents).\n"
-        "- Strengths & Weaknesses: For each competitor, summarize their core strengths and key weaknesses.\n"
-        "- Market Positioning: Describe how each competitor is positioned (premium, budget, niche, etc.).\n"
-        "- Funding & Traction: Note any known funding rounds, user base, or revenue milestones.\n"
-        "- Whitespace Opportunities: Identify gaps or underserved segments that competitors are missing."
-    )
+    """Search the web for competitor data in the specified market including
+    top companies, their strengths/weaknesses, funding, and market gaps.
+
+    Args:
+        topic: The market or business domain to find competitors for.
+
+    Returns:
+        A structured summary of real web search results covering competitor data.
+    """
+    queries = {
+        "Top Competitors": f'"{topic}" top companies OR competitors OR market leaders OR startups',
+        "Strengths & Weaknesses": f'"{topic}" competitor strengths OR weaknesses OR pros OR cons reviews',
+        "Funding & Traction": f'"{topic}" startup funding OR raised OR Series A OR valuation OR users',
+        "Whitespace Opportunities": f'"{topic}" market gaps OR underserved OR unmet needs OR opportunities',
+    }
+
+    report = f"## Competitor Analysis: {topic}\n\n"
+    for section, query in queries.items():
+        data = _ddg_search(query, max_results=2)
+        report += f"### {section}\n{data}\n\n"
+    print("Comp Ananlysis toll in use")
+    return report
