@@ -78,7 +78,7 @@ else:
 
 st.title("🚀 Startup Idea Chatbot")
 st.write(
-    "Enter a market topic. I will find the top 3 user pain points and ask you to pick one. "
+    "Enter a market topic. I will find the  3 user pain points and ask you to pick one. "
     "Then I will generate a targeted startup idea based on your choice!"
 )
 
@@ -105,27 +105,45 @@ if submit_button and user_input.strip():
             with st.spinner("🌐 Deep-scraping 8 sources for domain pain points..."):
                 pain_points_text = gather_pain_points(user_text)
 
+            with st.spinner("🧠 Extracting candidate pain points and checking against memory..."):
                 extraction_prompt = f"""/no_think
-Analyze the following user pain points and complaints. Identify the top 3 most distinct, 
-significant, and actionable pain points that could form the basis of a startup.
+You are a startup researcher analyzing the {user_text} sector.
+Identify the top 5 most distinct, significant, and actionable industry-wide pain points or market gaps from the complaints below.
 
-## Raw Pain Points
+RULES:
+- Each pain point must follow this format: "In {user_text}, [who] cannot [do what] because [structural reason], costing them [impact]."
+- Keep each line under 70 words.
+- Focus on: market inefficiencies, unserved customer segments, broken workflows, or missing infrastructure.
+- Explicitly ban: UI bugs, app crashes, customer support issues, subscription pricing complaints.
+- Do NOT name specific companies. Focus on the sector problem.
+- Output EXACTLY 5 lines, each starting with "- ". Do not add any other text.
+
+## Raw Complaints
 {pain_points_text}
-
-## Output Format
-Return exactly 3 lines, each starting with "- ". Keep each line under 30 words describing the specific problem. Do not add any other text.
 """
-                extraction_response = idea_llm.invoke(extraction_prompt)
-                lines = [line.strip().lstrip('-').strip() for line in extraction_response.content.strip().split('\n') if line.strip().startswith('-')]
-                
-                if len(lines) >= 3:
-                    st.session_state.current_options = lines[:3]
-                else:
-                    st.session_state.current_options = [
-                        "General UX/UI issues and bugs",
-                        "Lack of specific features requested by users",
-                        "Customer service and subscription problems"
+                candidates = []
+                try:
+                    response = idea_llm.invoke(extraction_prompt)
+                    candidates = [l.strip().lstrip('-').strip() for l in response.content.strip().split('\n') if l.strip().startswith('-')]
+                except Exception as e:
+                    pass
+
+                if len(candidates) < 3:
+                    candidates = [
+                        f"In {user_text}, customers cannot access reliable services because of fragmented providers, costing them extra search time.",
+                        f"In {user_text}, small businesses cannot scale operationally due to high overhead software costs, limiting their profit margins.",
+                        f"In {user_text}, users cannot verify provider credentials quickly, resulting in security vulnerabilities and loss of trust."
                     ]
+
+                try:
+                    from embeddings import filter_and_ensure_unique_pain_points
+                    synthesized_needs = filter_and_ensure_unique_pain_points(candidates, user_text, idea_llm)
+                except Exception as e:
+                    synthesized_needs = candidates[:3]
+
+                st.session_state.current_options = synthesized_needs[:3]
+
+
 
             reply = "Here are the Top 3 user complaints I found for that market. **Reply with 1, 2, or 3** to build an idea around it:\n\n"
             for i, opt in enumerate(st.session_state.current_options, 1):

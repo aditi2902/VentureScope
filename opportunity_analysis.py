@@ -2,34 +2,29 @@
 Analysis Tools
 ==============
 LangChain tools that perform real web searches to gather market,
-opportunity, and competitor data. Each tool uses DuckDuckGo to
-fetch live information rather than relying on LLM training data.
+opportunity, and competitor data. Each tool uses Serper (Google Search API)
+to fetch live information rather than relying on LLM training data.
 """
 
 from langchain.tools import tool
 from web_research import deep_web_research
-from ddgs import DDGS
+from search_client import serper_search
 import logging
 
 logger = logging.getLogger(__name__)
 
 
-def _ddg_search(query: str, max_results: int = 3) -> str:
-    """Run a DuckDuckGo search and return formatted snippets."""
-    try:
-        ddgs = DDGS()
-        results = list(ddgs.text(query, max_results=max_results))
-        if not results:
-            return "No results found."
-        lines = []
-        for r in results:
-            title = r.get("title", "")
-            body = r.get("body", "")
-            lines.append(f"- **{title}**: {body}")
-        return "\n".join(lines)
-    except Exception as e:
-        logger.warning(f"DDG search failed for '{query}': {e}")
-        return "Search failed."
+def _web_search(query: str, max_results: int = 3) -> str:
+    """Run a Google search via Serper and return formatted snippets."""
+    results = serper_search(query, max_results=max_results)
+    if not results:
+        return "No results found."
+    lines = []
+    for r in results:
+        title = r.get("title", "")
+        body = r.get("body", "")
+        lines.append(f"- **{title}**: {body}")
+    return "\n".join(lines)
 
 
 @tool
@@ -52,7 +47,7 @@ def analyze_market(topic: str) -> str:
 
     report = f"## Market Analysis: {topic}\n\n"
     for section, query in queries.items():
-        data = _ddg_search(query, max_results=2)
+        data = _web_search(query, max_results=2)
         report += f"### {section}\n{data}\n\n"
     print("MAr Ananlysis toll in use")
     return report
@@ -79,7 +74,7 @@ def analyze_opportunity(topic: str) -> str:
 
     report = f"## Opportunity Analysis: {topic}\n\n"
     for section, query in queries.items():
-        data = _ddg_search(query, max_results=2)
+        data = _web_search(query, max_results=2)
         report += f"### {section}\n{data}\n\n"
     print("OPp Ananlysis toll in use")
 
@@ -106,7 +101,7 @@ def analyze_competitors(topic: str) -> str:
 
     report = f"## Competitor Analysis: {topic}\n\n"
     for section, query in queries.items():
-        data = _ddg_search(query, max_results=2)
+        data = _web_search(query, max_results=2)
         report += f"### {section}\n{data}\n\n"
     print("Comp Ananlysis toll in use")
     return report

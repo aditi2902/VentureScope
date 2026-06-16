@@ -20,15 +20,11 @@ def _load_judge_llm():
 
 def judge_idea(topic: str, idea_name: str, idea_content: str) -> dict:
     """
-    Use an LLM to judge whether a new startup idea is too similar to any
-    previously approved ideas in the database.
+    Use a two-stage approach to judge whether a new startup idea is too similar
+    to any previously approved ideas in the database.
 
-    Returns:
-        {
-            "approved": bool,
-            "reason": str,
-            "similar_ids": list[int],
-        }
+    Stage 1: Vector cosine similarity on HuggingFace embeddings. If > 0.85, reject.
+    Stage 2: LLM-as-a-Judge for finer nuance / semantic difference.
     """
     all_ideas = get_all_ideas()
 
@@ -40,6 +36,28 @@ def judge_idea(topic: str, idea_name: str, idea_content: str) -> dict:
             "similar_ids": [],
         }
 
+    # --- STAGE 1: Cosine Similarity Check on Embeddings ---
+    new_text = f"{idea_name}\n\n{idea_content}"
+    try:
+        from embeddings import embed_text, cosine_similarity
+        import numpy as np
+        new_emb = embed_text(new_text)
+        
+        for idea in all_ideas:
+            if idea.get("embedding") is not None:
+                existing_emb = np.frombuffer(idea["embedding"], dtype=np.float32)
+                sim = cosine_similarity(new_emb, existing_emb)
+                if sim > 0.85:
+                    return {
+                        "approved": False,
+                        "reason": f"Too similar to the existing idea '{idea['idea_name']}' (semantic similarity: {sim:.2f}).",
+                        "similar_ids": [idea["id"]],
+                    }
+    except Exception as e:
+        # Fallback if embeddings/similarity fails
+        pass
+
+    # --- STAGE 2: LLM-as-a-Judge fallback / nuance check ---
     # Build a digest of every existing idea for the judge
     existing_digest = ""
     all_ids = []
@@ -108,3 +126,4 @@ REASON: <one-sentence explaining which existing idea it duplicates and why>
         "reason": reason,
         "similar_ids": similar_ids,
     }
+
