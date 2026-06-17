@@ -109,33 +109,28 @@ def deep_web_research(query: str) -> str:
     """
     sections: dict[str, str] = {}
 
-    # Define research queries — each targets a different angle.
-    # Drastically reduced the max_results to speed up the LLM inference
+    # Define research queries targeting Market, Competitors, Opportunity, and Risks
+    # to mirror the detail from the previous separate tools.
     research_queries = [
         (
-            "Market Size & Trends",
-            f'"{query}" market size OR market value OR CAGR OR growth rate 2025 OR 2026',
-            1, True,  # Only 1 deep result
+            "Market Analysis (Size, CAGR, Trends)",
+            f'"{query}" market size OR CAGR OR growth rate OR growth drivers OR trends 2025 OR 2026',
+            3, False,  # 3 snippets
         ),
         (
-            "Key Competitors & Players",
-            f'"{query}" top companies OR competitors OR market leaders OR startups',
-            2, False, # Snippets only
+            "Competitor Analysis (Leaders, Funding)",
+            f'"{query}" top companies OR competitors OR market leaders OR startups OR funding OR valuation',
+            3, False,  # 3 snippets
         ),
         (
-            "Recent Funding & Investments",
-            f'"{query}" funding OR investment OR raised OR seed OR Series A 2025 OR 2026',
-            1, False, # Snippets only
+            "Opportunity Analysis (Pain Points, Value Prop, Revenue Models)",
+            f'"{query}" customer pain points OR unmet needs OR value proposition OR revenue model OR market gaps',
+            3, False,  # 3 snippets
         ),
         (
-            "User Complaints & Pain Points",
-            f'"{query}" complaints OR problems OR frustrations OR "pain points" OR challenges',
-            2, False, # Snippets only
-        ),
-        (
-            "Industry Expert Opinions",
-            f'"{query}" trends OR predictions OR expert OR analysis OR future',
-            1, True,  # Only 1 deep result
+            "Risks & Challenges (Execution, Barriers to Entry)",
+            f'"{query}" risks OR challenges OR barriers to entry OR threats OR implementation difficulty',
+            3, False,  # 3 snippets
         ),
     ]
 
@@ -147,7 +142,7 @@ def deep_web_research(query: str) -> str:
             return section_title, ""
 
     # Run all research queries in parallel
-    with ThreadPoolExecutor(max_workers=5) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         futures = {
             pool.submit(_run_query, title, q, max_r, deep): title
             for title, q, max_r, deep in research_queries
@@ -167,8 +162,8 @@ def deep_web_research(query: str) -> str:
             report += "No data found for this category.\n\n"
 
     # Cap total output to keep within LLM context limits
-    # A smaller context (2000 chars) ensures the local LLM runs much faster
-    if len(report) > 2000:
-        report = report[:1900] + "\n\n… (truncated for brevity)"
+    # Raised to 4000 to keep the detailed search snippets
+    if len(report) > 4000:
+        report = report[:3900] + "\n\n… (truncated for brevity)"
 
     return report

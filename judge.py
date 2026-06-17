@@ -6,16 +6,27 @@ ideas stored in the database. If the new idea is too similar to any
 existing one, it is rejected so the agent can try again.
 """
 
-from langchain_ollama import ChatOllama
+from langchain_google_genai import ChatGoogleGenerativeAI
 from database import get_all_ideas
+from dotenv import load_dotenv
 
+load_dotenv()
+
+
+import gemini_tracker
 
 def _load_judge_llm():
-    """Load a local Ollama model used exclusively for judging."""
-    return ChatOllama(
-        model="qwen3:8b",
+    """Load a Gemini Flash model used exclusively for judging."""
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
         temperature=0.2,
     )
+    original_invoke = llm.invoke
+    def tracked_invoke(*args, **kwargs):
+        gemini_tracker.track_call()
+        return original_invoke(*args, **kwargs)
+    llm.invoke = tracked_invoke
+    return llm
 
 
 def judge_idea(topic: str, idea_name: str, idea_content: str) -> dict:
