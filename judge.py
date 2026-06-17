@@ -25,7 +25,7 @@ def _load_judge_llm():
     def tracked_invoke(*args, **kwargs):
         gemini_tracker.track_call()
         return original_invoke(*args, **kwargs)
-    llm.invoke = tracked_invoke
+    object.__setattr__(llm, "invoke", tracked_invoke)
     return llm
 
 
