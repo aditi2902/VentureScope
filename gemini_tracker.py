@@ -7,4 +7,4 @@ def track_call():
     global GEMINI_CALLS
     with _lock:
         GEMINI_CALLS += 1
-        print(f"Gemini Call #{GEMINI_CALLS}")
+        print(f"Nvidia DeepSeek Call #{GEMINI_CALLS}")

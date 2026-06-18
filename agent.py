@@ -1,6 +1,7 @@
+import os
 import streamlit as st
 from langchain_ollama import ChatOllama
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_openai import ChatOpenAI
 from web_research import deep_web_research
 from database import init_db, save_idea, get_all_ideas, delete_idea
 from judge import judge_idea
@@ -83,9 +84,11 @@ def load_llm():
 import gemini_tracker
 
 @st.cache_resource
-def load_gemini_llm():
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
+def load_nvidia_llm():
+    llm = ChatOpenAI(
+        model="deepseek-ai/deepseek-v4-flash",
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key=os.environ.get("NVIDIA_API_KEY"),
         temperature=0.7,
     )
     original_invoke = llm.invoke
@@ -97,7 +100,7 @@ def load_gemini_llm():
 
 try:
     idea_llm = load_llm()
-    gemini_llm = load_gemini_llm()
+    nvidia_llm = load_nvidia_llm()
 except Exception as e:
     st.error(f"❌ Failed to load models:\n\n{e}")
     st.stop()
@@ -165,7 +168,7 @@ No other text.
 """
             candidates = []
             try:
-                response = gemini_llm.invoke(extraction_prompt)
+                response = nvidia_llm.invoke(extraction_prompt)
                 candidates = [l.strip().lstrip('-').strip() for l in response.content.strip().split('\n') if l.strip().startswith('-')]
             except Exception as e:
                 pass
@@ -179,7 +182,7 @@ No other text.
 
             try:
                 from embeddings import filter_and_ensure_unique_pain_points
-                synthesized_needs = filter_and_ensure_unique_pain_points(candidates, st.session_state.market, gemini_llm)
+                synthesized_needs = filter_and_ensure_unique_pain_points(candidates, st.session_state.market, nvidia_llm)
             except Exception as e:
                 synthesized_needs = candidates[:3]
 
