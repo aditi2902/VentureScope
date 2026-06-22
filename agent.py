@@ -6,9 +6,10 @@ from web_research import deep_web_research
 from database import init_db, save_idea, get_all_ideas, delete_idea
 from judge import judge_idea
 from pain_points import gather_pain_points
+from dialectic import run_dialectic, bull_case, bear_case, investment_judge
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 # =====================================
 # DATABASE INIT
@@ -32,6 +33,12 @@ if "step" not in st.session_state:
     st.session_state.step = 0
 if "market" not in st.session_state:
     st.session_state.market = ""
+if "sector" not in st.session_state:
+    st.session_state.sector = "B2B SaaS"
+if "team_size" not in st.session_state:
+    st.session_state.team_size = "1-2 (Solo/Co-founders)"
+if "budget" not in st.session_state:
+    st.session_state.budget = "$10k-$50k (Pre-seed)"
 if "top_pain_points" not in st.session_state:
     st.session_state.top_pain_points = []
 if "raw_pain_points" not in st.session_state:
@@ -41,6 +48,17 @@ def reset_state():
     st.session_state.step = 0
     st.session_state.top_pain_points = []
     st.session_state.raw_pain_points = ""
+    if "idea_name" in st.session_state:
+        del st.session_state.idea_name
+    if "idea_content" in st.session_state:
+        del st.session_state.idea_content
+    if "analysis_text" in st.session_state:
+        del st.session_state.analysis_text
+    if "dialectic_result" in st.session_state:
+        del st.session_state.dialectic_result
+    for key in list(st.session_state.keys()):
+        if key.startswith("audio_"):
+            del st.session_state[key]
 
 # =====================================
 # SIDEBAR — Approved Startup Ideas
@@ -86,7 +104,7 @@ import gemini_tracker
 @st.cache_resource
 def load_nvidia_llm():
     llm = ChatOpenAI(
-        model="deepseek-ai/deepseek-v4-flash",
+        model="deepseek-ai/deepseek-v4-pro",
         base_url="https://integrate.api.nvidia.com/v1",
         api_key=os.environ.get("NVIDIA_API_KEY"),
         temperature=0.7,
@@ -109,14 +127,50 @@ except Exception as e:
 # STEP 1: USER INPUT & PAIN POINT GATHERING
 # =====================================
 
-market_input = st.text_input(
-    "Market / Domain",
-    value=st.session_state.market,
-    placeholder="e.g. Fitness Apps, AI Education, HealthTech"
-)
+col_market, col_sector = st.columns(2)
+with col_market:
+    market_input = st.text_input(
+        "Market / Domain",
+        value=st.session_state.market,
+        placeholder="e.g. Fitness Apps, AI Education, HealthTech"
+    )
 
-if market_input != st.session_state.market:
+sectors = ["B2B SaaS", "B2C Mobile App", "FinTech", "HealthTech", "DeepTech", "Hardware", "E-commerce", "Marketplace"]
+default_sector_idx = sectors.index(st.session_state.sector) if st.session_state.sector in sectors else 0
+with col_sector:
+    sector_input = st.selectbox(
+        "Sector",
+        options=sectors,
+        index=default_sector_idx
+    )
+
+col_team, col_budget = st.columns(2)
+team_sizes = ["1-2 (Solo/Co-founders)", "3-5 (Small Team)", "6-10 (Growing Startup)", "10+ (Established)"]
+default_team_idx = team_sizes.index(st.session_state.team_size) if st.session_state.team_size in team_sizes else 0
+with col_team:
+    team_size_input = st.selectbox(
+        "Team Size",
+        options=team_sizes,
+        index=default_team_idx
+    )
+
+budgets = ["<$10k (Lean/Bootstrapped)", "$10k-$50k (Pre-seed)", "$50k-$200k (Seed)", "$200k+ (Ventured)"]
+default_budget_idx = budgets.index(st.session_state.budget) if st.session_state.budget in budgets else 1
+with col_budget:
+    budget_input = st.selectbox(
+        "Available Budget",
+        options=budgets,
+        index=default_budget_idx
+    )
+
+if (market_input != st.session_state.market or 
+    sector_input != st.session_state.sector or 
+    team_size_input != st.session_state.team_size or 
+    budget_input != st.session_state.budget):
     st.session_state.market = market_input
+    st.session_state.sector = sector_input
+    st.session_state.team_size = team_size_input
+    st.session_state.budget = budget_input
     reset_state()
 
 if st.session_state.step == 0:
@@ -168,8 +222,9 @@ No other text.
 """
             candidates = []
             try:
-                response = nvidia_llm.invoke(extraction_prompt)
-                candidates = [l.strip().lstrip('-').strip() for l in response.content.strip().split('\n') if l.strip().startswith('-')]
+                from dialectic import invoke_with_retry
+                response_content = invoke_with_retry(nvidia_llm, extraction_prompt)
+                candidates = [l.strip().lstrip('-').strip() for l in response_content.split('\n') if l.strip().startswith('-')]
             except Exception as e:
                 pass
 
@@ -231,28 +286,51 @@ if st.session_state.step == 2:
         for i, idea in enumerate(existing_ideas[:10], 1):
             existing_ideas_text += f"\n{i}. **{idea['idea_name']}**: {idea['idea_content'][:200]}...\n"
 
-    attempt = 0
-    approved = False
-    rejected_list = []
-    
-    idea_name = "Unnamed Startup"
-    idea_content = ""
-    verdict = {"approved": False, "reason": "No attempts made yet."}
+    if "idea_name" not in st.session_state:
+        # Run web research once upfront (market-level, reusable across idea attempts)
+        with st.spinner("🌐 Running live web research for market analysis..."):
+            research_report = deep_web_research.run(st.session_state.market)
 
-    while not approved:
-        attempt += 1
-        
-        rejected_ideas_text = ""
-        if rejected_list:
-            rejected_ideas_text = "\n\n## CRITICAL: DO NOT REPEAT THESE REJECTED IDEAS\nThe following startup ideas were just rejected for being too similar to existing work. You MUST NOT propose anything similar to these concepts:\n"
-            for idx, rej in enumerate(rejected_list, 1):
-                rejected_ideas_text += f"- **{rej['name']}**: {rej['content'][:150]}...\n"
+        max_pipeline_attempts = 3
+        pipeline_attempt = 0
+        rejected_list = []
 
-        idea_prompt = f"""/no_think
+        idea_name = "Unnamed Startup"
+        idea_content = ""
+        analysis_text = ""
+        dialectic_result = {}
+
+        pipeline_approved = False
+        while not pipeline_approved and pipeline_attempt < max_pipeline_attempts:
+            pipeline_attempt += 1
+
+            if pipeline_attempt > 1:
+                st.info(f"🔄 Generating a new idea (Pipeline attempt {pipeline_attempt}/{max_pipeline_attempts})...")
+
+            # --- STAGE 1: Generate an original idea (with originality loop) ---
+            originality_approved = False
+            orig_attempt = 0
+            while not originality_approved:
+                orig_attempt += 1
+
+                rejected_ideas_text = ""
+                if rejected_list:
+                    rejected_ideas_text = "\n\n## CRITICAL: DO NOT REPEAT THESE REJECTED IDEAS\nThe following startup ideas were just rejected. You MUST NOT propose anything similar to these concepts:\n"
+                    for idx, rej in enumerate(rejected_list, 1):
+                        rejected_ideas_text += f"- **{rej['name']}**: {rej['content'][:150]}...\n"
+
+                idea_prompt = f"""/no_think
 You are an expert startup founder. You have identified the following specific user pain point in the {st.session_state.market} market:
 "{selected_pain_point}"
 
 Generate ONE unique and detailed startup idea that directly solves this exact problem.
+
+## Constraints & Context:
+- Sector: {st.session_state.sector}
+- Team Size: {st.session_state.team_size}
+- Available Budget: {st.session_state.budget}
+
+The proposed startup idea must be realistic and executable within these team size and budget constraints for the selected sector.
 
 {existing_ideas_text}
 {rejected_ideas_text}
@@ -274,41 +352,41 @@ STARTUP NAME: <catchy startup name>
 Keep it between 200-400 words.>
 """
 
-        with st.spinner(f"💡 Generating startup idea (Attempt {attempt})..."):
-            temp_llm = ChatOllama(
-                model="qwen2.5:3b",
-                temperature=min(0.7 + (attempt - 1) * 0.1, 1.2)
-            )
-            idea_response = temp_llm.invoke(idea_prompt)
-            idea_raw = idea_response.content.strip()
+                with st.spinner(f"💡 Generating startup idea (Attempt {orig_attempt})..."):
+                    temp_llm = ChatOllama(
+                        model="qwen2.5:3b",
+                        temperature=min(0.7 + (orig_attempt - 1) * 0.1, 1.2)
+                    )
+                    idea_response = temp_llm.invoke(idea_prompt)
+                    idea_raw = idea_response.content.strip()
 
-        # Parse startup name and description
-        temp_name = "Unnamed Startup"
-        temp_content = idea_raw
+                # Parse startup name and description
+                if "STARTUP NAME:" in idea_raw:
+                    parts = idea_raw.split("---", 1)
+                    name_line = parts[0].strip()
+                    temp_name = name_line.replace("STARTUP NAME:", "").strip()
+                    if len(parts) > 1:
+                        temp_content = parts[1].strip()
+                    else:
+                        temp_content = idea_raw
+                else:
+                    temp_name = "Unnamed Startup"
+                    temp_content = idea_raw
 
-        if "STARTUP NAME:" in idea_raw:
-            parts = idea_raw.split("---", 1)
-            name_line = parts[0].strip()
-            temp_name = name_line.replace("STARTUP NAME:", "").strip()
-            if len(parts) > 1:
-                temp_content = parts[1].strip()
+                with st.spinner(f"🧑‍⚖️ Judge is reviewing Attempt {orig_attempt} for originality..."):
+                    orig_verdict = judge_idea(st.session_state.market, temp_name, temp_content)
 
-        with st.spinner(f"🧑‍⚖️ Judge is reviewing Attempt {attempt} for originality..."):
-            verdict = judge_idea(st.session_state.market, temp_name, temp_content)
+                if orig_verdict["approved"]:
+                    originality_approved = True
+                    idea_name = temp_name
+                    idea_content = temp_content
+                else:
+                    rejected_list.append({"name": temp_name, "content": temp_content})
+                    st.warning(f"⚠️ Attempt {orig_attempt} rejected (Originality): {orig_verdict['reason']}")
 
-        if verdict["approved"]:
-            approved = True
-            idea_name = temp_name
-            idea_content = temp_content
-        else:
-            rejected_list.append({"name": temp_name, "content": temp_content})
-            st.warning(f"⚠️ Attempt {attempt} rejected: {verdict['reason']}")
-
-    with st.spinner("📊 Running live web research & analysis..."):
-        # Run the single deep web research query directly
-        research_report = deep_web_research.run(st.session_state.market)
-        
-        analysis_prompt = f"""/no_think
+            # --- STAGE 2: Run analysis (idea-specific, uses cached web research) ---
+            with st.spinner(f"📊 Analyzing '{idea_name}' against market research..."):
+                analysis_prompt = f"""/no_think
 You are an expert business analyst. Analyze the following startup idea in the context of the provided web research report.
 
 Startup Idea Name: {idea_name}
@@ -325,22 +403,117 @@ Based on this research report, provide a structured, detailed analysis covering:
 
 Ensure your analysis is grounded in the facts and data cited in the research report. Cite specific data points. Keep the analysis under 600 words.
 """
-        analysis_response = idea_llm.invoke(analysis_prompt)
-        analysis_text = analysis_response.content
+                analysis_response = idea_llm.invoke(analysis_prompt)
+                analysis_text = analysis_response.content
 
-    # Save and display
+            # --- STAGE 3: Run dialectic debate ---
+            with st.status(f"🐂🐻⚖️ Running Dialectic Investment Debate for '{idea_name}'...", expanded=True) as status:
+                st.write("📢 **Round 1: Bull Initial Case**")
+                bull_r1 = bull_case(idea_name, idea_content, st.session_state.market, analysis_text, 1, "", nvidia_llm, sector=st.session_state.sector, team_size=st.session_state.team_size, budget=st.session_state.budget)
+                st.markdown(bull_r1)
+                st.markdown("---")
+
+                st.write("📢 **Round 1: Bear Counter**")
+                history_for_bear_r1 = f"Bull (Round 1):\n{bull_r1}"
+                bear_r1 = bear_case(idea_name, idea_content, st.session_state.market, analysis_text, 1, history_for_bear_r1, nvidia_llm, sector=st.session_state.sector, team_size=st.session_state.team_size, budget=st.session_state.budget)
+                st.markdown(bear_r1)
+                st.markdown("---")
+
+                st.write("⚖️ **Judge Evaluating...**")
+                full_history = (
+                    f"--- Round 1: Bull Case ---\n{bull_r1}\n\n"
+                    f"--- Round 1: Bear Case ---\n{bear_r1}"
+                )
+                dialectic_result = investment_judge(idea_name, idea_content, st.session_state.market, analysis_text, full_history, nvidia_llm, sector=st.session_state.sector, team_size=st.session_state.team_size, budget=st.session_state.budget)
+                dialectic_result["transcript"] = [
+                    {"role": "Bull (Round 1)", "content": bull_r1},
+                    {"role": "Bear (Round 1)", "content": bear_r1},
+                ]
+
+                if dialectic_result["investable"]:
+                    status.update(label=f"✅ Approved by Investment Judge (Score: {dialectic_result['score']}/10)", state="complete")
+                    pipeline_approved = True
+                else:
+                    status.update(label=f"⚠️ Rejected by Investment Judge (Score: {dialectic_result['score']}/10)", state="error")
+                    if pipeline_attempt < max_pipeline_attempts:
+                        st.warning(f"⚠️ Idea '{idea_name}' rejected by Investment Judge (Score: {dialectic_result['score']}/10). Generating a new idea...")
+                        rejected_list.append({"name": idea_name, "content": idea_content})
+                    else:
+                        st.warning(f"⚠️ Maximum pipeline attempts reached. Showing best result.")
+
+        # Save to session state to prevent regeneration
+        st.session_state.idea_name = idea_name
+        st.session_state.idea_content = idea_content
+        st.session_state.analysis_text = analysis_text
+        st.session_state.dialectic_result = dialectic_result
+
+        # Save to database (only once per generation)
+        saved_content = (
+            f"{idea_content}\n\n"
+            f"### Comprehensive Analysis\n{analysis_text}\n\n"
+            f"### ⚖️ Dialectic Investment Debate\n"
+            f"**Verdict:** {dialectic_result['verdict']} (Score: {dialectic_result['score']}/10)\n\n"
+            f"**Decision Explanation:**\n{dialectic_result['explanation']}\n\n"
+            f"**Bull Case Summary:**\n{dialectic_result['bull_summary']}\n\n"
+            f"**Bear Case Summary:**\n{dialectic_result['bear_summary']}"
+        )
+        save_idea(st.session_state.market, idea_name, saved_content)
+
+    # Retrieve from session state
+    idea_name = st.session_state.idea_name
+    idea_content = st.session_state.idea_content
+    analysis_text = st.session_state.analysis_text
+    dialectic_result = st.session_state.dialectic_result
+
+    if dialectic_result["investable"]:
+        st.success(f"✅ **Dialectic Judge APPROVED** — Idea is investable (Score: {dialectic_result['score']}/10)")
+    else:
+        st.warning(f"⚠️ Idea '{idea_name}' rejected by Investment Judge (Score: {dialectic_result['score']}): {dialectic_result['explanation']}")
+
     st.markdown("---")
-    save_idea(st.session_state.market, idea_name, f"{idea_content}\n\n### Comprehensive Analysis\n{analysis_text}")
 
     st.markdown(f"## 🚀 {idea_name}")
     st.markdown(idea_content)
-    st.success(f"✅ **Judge APPROVED** — {verdict['reason']}")
     
     st.markdown("---")
     st.markdown("## 📊 Comprehensive Analysis")
     st.markdown(analysis_text)
     
-    st.success("💾 Startup idea and analysis saved to database!")
+    st.markdown("---")
+    st.markdown("## ⚖️ Dialectic Investment Debate Verdict")
+    st.subheader(f"Score: {dialectic_result['score']}/10.0")
+    st.info(f"**Explanation:** {dialectic_result['explanation']}")
+    
+    with st.expander("💬 View Full 1-Round Debate Transcript", expanded=True):
+        for turn in dialectic_result["transcript"]:
+            role = turn["role"]
+            content = turn["content"]
+            if "Bull" in role:
+                st.markdown(f"### 🐂 {role}")
+                speaker_id = 0
+            else:
+                st.markdown(f"### 🐻 {role}")
+                speaker_id = 1
+            st.markdown(content)
+
+            # Text-to-Speech audio integration
+            audio_key = f"audio_{idea_name}_{role}"
+            if audio_key in st.session_state:
+                st.audio(st.session_state[audio_key])
+            else:
+                if st.button(f"🔊 Listen to {role}", key=f"btn_{audio_key}"):
+                    with st.spinner("🔊 Synthesizing speech via MisoTTS..."):
+                        try:
+                            from dialectic import synthesize_speech
+                            audio_path = synthesize_speech(content, speaker_id=speaker_id)
+                            st.session_state[audio_key] = audio_path
+                            st.rerun()
+                        except Exception as tts_err:
+                            st.error(f"❌ Failed to synthesize speech: {tts_err}")
+            
+            st.markdown("---")
+
+    st.success("💾 Startup idea, analysis, and debate transcript saved to database!")
     
     if st.button("🔄 Create Another Idea"):
         reset_state()

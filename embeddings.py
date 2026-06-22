@@ -120,10 +120,12 @@ RULES:
 - Output each pain point on a new line starting with "- ". Do not add any other text.
 """
         try:
-            response = llm.invoke(refinement_prompt)
-            new_lines = [l.strip().lstrip('-').strip() for l in response.content.strip().split('\n') if l.strip().startswith('-')]
+            from dialectic import invoke_with_retry
+            response_content = invoke_with_retry(llm, refinement_prompt)
+            new_lines = [l.strip().lstrip('-').strip() for l in response_content.split('\n') if l.strip().startswith('-')]
             candidates_to_process = new_lines[:needed]
-        except Exception:
+        except Exception as e:
+            print(f"[embeddings] Uniqueness check refinement failed: {e}")
             break
 
     # Fill fallback defaults if we don't have enough

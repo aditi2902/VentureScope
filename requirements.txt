@@ -7,3 +7,4 @@ requests>=2.30.0
 trafilatura>=2.1.0
 langchain-google-genai>=1.0.0
 langchain-openai>=0.0.8
+gradio_client>=2.5.0

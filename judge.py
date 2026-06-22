@@ -11,19 +11,18 @@ from langchain_openai import ChatOpenAI
 from database import get_all_ideas
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 
 import gemini_tracker
 
 def _load_judge_llm():
-    """Load a Nvidia NIM DeepSeek Flash model used exclusively for judging."""
+    """Load a Nvidia NIM DeepSeek V4 Pro model used exclusively for judging."""
     llm = ChatOpenAI(
-        model="deepseek-ai/deepseek-v4-flash",
+        model="deepseek-ai/deepseek-v4-pro",
         base_url="https://integrate.api.nvidia.com/v1",
         api_key=os.environ.get("NVIDIA_API_KEY"),
         temperature=0.2,
-        extra_body={"chat_template_kwargs": {"thinking": True, "reasoning_effort": "high"}},
     )
     original_invoke = llm.invoke
     def tracked_invoke(*args, **kwargs):
@@ -116,9 +115,9 @@ REASON: <one-sentence explaining which existing idea it duplicates and why>
 
 /no_think"""
 
+    from dialectic import invoke_with_retry
     llm = _load_judge_llm()
-    response = llm.invoke(judge_prompt)
-    raw = response.content.strip()
+    raw = invoke_with_retry(llm, judge_prompt)
 
     # Parse the verdict
     approved = True
