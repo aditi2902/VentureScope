@@ -514,6 +514,15 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
             pain_point=st.session_state.selected_pain_point,
         )
 
+    with st.spinner("💰 Searching for relevant VCs..."):
+        vc_report = find_vcs(
+            market=st.session_state.market,
+            idea_name=idea_name,
+            idea_content=idea_content,
+            pain_point=st.session_state.selected_pain_point,
+        )
+
+    # Save and display
     st.markdown("---")
 
     st.markdown(f"## 🚀 {idea_name}")
@@ -539,6 +548,8 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
         st.markdown("### 🐻 Bear Case Summary")
         st.markdown(dialectic_result.get('bear_summary', 'No summary available.'))
 
+    combined_content = f"{idea_content}\n\n### Comprehensive Analysis\n{analysis_text}\n\n### VC Investment Landscape\n{vc_report}"
+    save_idea(st.session_state.market, idea_name, combined_content)
     st.success("💾 Startup idea, analysis, dialectic debate, and VC research saved to database!")
     
     if st.button("🔄 Create Another Idea"):

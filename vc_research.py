@@ -1,4 +1,4 @@
-"""
+﻿"""
 VC Research Tool
 ================
 Searches for Venture Capital firms that have invested in similar startups
@@ -274,7 +274,7 @@ def find_vcs(
                 if name.startswith(prefix):
                     name = name[len(prefix):]
                     break
-            # Skip sentences / long phrases (VC names are 1–5 words)
+            # Skip sentences / long phrases (VC names are 1ΓÇô5 words)
             if len(name.split()) > 5:
                 continue
             # Skip phrases that contain "has" / "including" / "today" etc.
@@ -293,7 +293,7 @@ def find_vcs(
 
     # Crunchbase section (kept as-is)
     if cb_firms:
-        report += "### Crunchbase — VC Firms in this Space\n"
+        report += "### Crunchbase ΓÇö VC Firms in this Space\n"
         for firm in cb_firms:
             name = firm["name"]
             desc = firm["description"]
@@ -311,7 +311,7 @@ def find_vcs(
 
     # Web search results (kept as-is)
     if unique_results:
-        report += "### Web Search — Investors & Funding Activity\n"
+        report += "### Web Search ΓÇö Investors & Funding Activity\n"
         for i, r in enumerate(unique_results[: max_results * 2], 1):
             title = r.get("title", "")
             body = r.get("body", "")
@@ -329,7 +329,7 @@ def find_vcs(
         report += "No VC-related results found via web search.\n"
 
     if max_chars and len(report) > max_chars:
-        report = report[: max_chars - 60] + "\n\n… (truncated for brevity)"
+        report = report[: max_chars - 60] + "\n\nΓÇª (truncated for brevity)"
 
     return report
 
