@@ -5,7 +5,6 @@ from opportunity_analysis import analyze_market, analyze_opportunity, analyze_co
 from database import init_db, save_idea, get_all_ideas, delete_idea
 from judge import judge_idea
 from pain_points import gather_pain_points
-from vc_research import find_vcs
 
 # =====================================
 # DATABASE INIT
@@ -125,47 +124,32 @@ if st.session_state.step == 0:
             pain_points_text = gather_pain_points(st.session_state.market)
             st.session_state.raw_pain_points = pain_points_text
             
-        with st.spinner("🧠 Extracting candidate pain points and checking against memory..."):
+            # Extract Top 3 using LLM
             extraction_prompt = f"""/no_think
-You are a startup researcher analyzing the {st.session_state.market} sector.
-Identify the top 5 most distinct, significant, and actionable industry-wide pain points or market gaps from the complaints below.
+Analyze the following user pain points and complaints. Identify the top 3 most distinct, 
+significant, and actionable pain points that could form the basis of a startup.
 
-RULES:
-- Each pain point must follow this format: "In {st.session_state.market}, [who] cannot [do what] because [structural reason], costing them [impact]."
-- Keep each line under 70 words.
-- Focus on: market inefficiencies, unserved customer segments, broken workflows, or missing infrastructure.
-- Explicitly ban: UI bugs, app crashes, customer support issues, subscription pricing complaints.
-- Do NOT name specific companies. Focus on the sector problem.
-- Output EXACTLY 5 lines, each starting with "- ". Do not add any other text.
-
-## Raw Complaints
+## Raw Pain Points
 {pain_points_text}
+
+## Output Format
+Return exactly 3 lines, each starting with "- ". Keep each line under 30 words describing the specific problem. Do not add any other text.
 """
-            candidates = []
-            try:
-                response = idea_llm.invoke(extraction_prompt)
-                candidates = [l.strip().lstrip('-').strip() for l in response.content.strip().split('\n') if l.strip().startswith('-')]
-            except Exception as e:
-                pass
-
-            if len(candidates) < 3:
-                candidates = [
-                    f"In {st.session_state.market}, customers cannot access reliable services because of fragmented providers, costing them extra search time.",
-                    f"In {st.session_state.market}, small businesses cannot scale operationally due to high overhead software costs, limiting their profit margins.",
-                    f"In {st.session_state.market}, users cannot verify provider credentials quickly, resulting in security vulnerabilities and loss of trust."
+            extraction_response = idea_llm.invoke(extraction_prompt)
+            lines = [line.strip().lstrip('-').strip() for line in extraction_response.content.strip().split('\n') if line.strip().startswith('-')]
+            
+            if len(lines) >= 3:
+                st.session_state.top_pain_points = lines[:3]
+            else:
+                # Fallback if parsing fails
+                st.session_state.top_pain_points = [
+                    "General UX/UI issues and bugs",
+                    "Lack of specific features requested by users",
+                    "Customer service and subscription problems"
                 ]
-
-            try:
-                from embeddings import filter_and_ensure_unique_pain_points
-                synthesized_needs = filter_and_ensure_unique_pain_points(candidates, st.session_state.market, idea_llm)
-            except Exception as e:
-                synthesized_needs = candidates[:3]
-
-            st.session_state.top_pain_points = synthesized_needs[:3]
+            
             st.session_state.step = 1
             st.rerun()
-
-
 
 # =====================================
 # STEP 2: USER SELECTION & IDEA GENERATION
@@ -273,18 +257,9 @@ Keep it between 200-400 words.>
         if "messages" in analysis_response and analysis_response["messages"]:
             analysis_text = analysis_response["messages"][-1].content
 
-    with st.spinner("💰 Searching for relevant VCs..."):
-        vc_report = find_vcs(
-            market=st.session_state.market,
-            idea_name=idea_name,
-            idea_content=idea_content,
-            pain_point=st.session_state.selected_pain_point,
-        )
-
     # Save and display
     st.markdown("---")
-    combined_content = f"{idea_content}\n\n### Comprehensive Analysis\n{analysis_text}\n\n### VC Investment Landscape\n{vc_report}"
-    save_idea(st.session_state.market, idea_name, combined_content)
+    save_idea(st.session_state.market, idea_name, f"{idea_content}\n\n### Comprehensive Analysis\n{analysis_text}")
 
     st.markdown(f"## 🚀 {idea_name}")
     st.markdown(idea_content)
@@ -293,12 +268,8 @@ Keep it between 200-400 words.>
     st.markdown("---")
     st.markdown("## 📊 Comprehensive Analysis")
     st.markdown(analysis_text)
-
-    st.markdown("---")
-    st.markdown("## 💰 VC Investment Landscape")
-    st.markdown(vc_report)
     
-    st.success("💾 Startup idea, analysis, and VC research saved to database!")
+    st.success("💾 Startup idea and analysis saved to database!")
     
     if st.button("🔄 Create Another Idea"):
         reset_state()

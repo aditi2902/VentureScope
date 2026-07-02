@@ -12,7 +12,7 @@ All HTTP requests have an 8-second timeout.
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from langchain.tools import tool
-from search_client import web_search
+from ddgs import DDGS
 import requests
 import trafilatura
 
@@ -48,8 +48,13 @@ def _fetch_page_text(url: str, max_chars: int = 500) -> str:
 
 
 def _search_and_extract(query: str, max_results: int = 3, deep: bool = True) -> str:
-    """Run a Google search via Serper, optionally deep-scrape each result page."""
-    results = web_search(query, max_results=max_results)
+    """Run one DDG search, optionally deep-scrape each result page."""
+    try:
+        ddgs = DDGS()
+        results = list(ddgs.text(query, max_results=max_results))
+    except Exception as e:
+        logger.warning(f"DDG search failed for '{query}': {e}")
+        return ""
 
     if not results:
         return ""
