@@ -15,29 +15,25 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 def _load_fallback_llm():
-    """Fallback in case no LLM is passed."""
+    """Primary fallback: Llama 3.1 70B (stable Nvidia endpoint)."""
     llm = ChatOpenAI(
-        model="deepseek-ai/deepseek-v4-pro",
+        model="meta/llama-3.1-70b-instruct",
         base_url="https://integrate.api.nvidia.com/v1",
         api_key=os.environ.get("NVIDIA_API_KEY"),
         temperature=0.7,
     )
     original_invoke = llm.invoke
     def tracked_invoke(*args, **kwargs):
-        gemini_tracker.track_call()
+        print(f"🤖 [LLM CALL] -> Model: meta/llama-3.1-70b-instruct (Nvidia NIM Fallback)")
         return original_invoke(*args, **kwargs)
     object.__setattr__(llm, "invoke", tracked_invoke)
     return llm
 
-def invoke_with_retry(llm, prompt, max_retries=5, initial_delay=3.0) -> str:
+def invoke_with_retry(llm, prompt, max_retries=3, initial_delay=5.0) -> str:
     """
-    Invokes the LLM with exponential backoff on 429 rate limit errors.
-    If it ultimately fails after max_retries, falls back to a local Ollama model.
+    Invokes the LLM with exponential backoff for transient RPM rate limits (429).
+    Immediately falls back to Llama 3.1 70B on daily quota exhaustion (RESOURCE_EXHAUSTED).
     """
-    # Preventative delay of 1.5 seconds to avoid blasting/bursting requests
-    if "ChatOpenAI" in str(type(llm)):
-        time.sleep(1.5)
-
     delay = initial_delay
     for attempt in range(max_retries):
         try:
@@ -45,29 +41,54 @@ def invoke_with_retry(llm, prompt, max_retries=5, initial_delay=3.0) -> str:
             return response.content.strip()
         except Exception as e:
             err_str = str(e)
-            is_rate_limit = "429" in err_str or "RateLimitError" in e.__class__.__name__ or "too many requests" in err_str.lower()
-            
-            if is_rate_limit and attempt < max_retries - 1:
+            is_daily_quota = "RESOURCE_EXHAUSTED" in err_str or "exceeded your current quota" in err_str.lower()
+            is_rpm_limit = "429" in err_str and not is_daily_quota
+            is_not_found = "404" in err_str or "NOT_FOUND" in err_str
+
+            # Daily quota or model not found → jump to fallback immediately, no point retrying
+            if is_daily_quota or is_not_found:
+                print(f"[dialectic] Hard quota/404 error — skipping retries, falling back immediately: {e}")
+                break
+
+            # Transient RPM rate limit → wait and retry
+            if is_rpm_limit and attempt < max_retries - 1:
                 sleep_time = delay + random.uniform(0, 1.0)
                 print(f"[dialectic] Rate limit hit (429). Retrying in {sleep_time:.2f}s... (Attempt {attempt + 1}/{max_retries})")
                 time.sleep(sleep_time)
                 delay *= 2.0
-            else:
-                # If we exhausted retries or got a non-rate-limit error, use local fallback model
-                msg = f"[dialectic] LLM invoke failed with error: {e}. Falling back to local Qwen model..."
-                print(msg)
-                try:
-                    import streamlit as st
-                    st.warning(f"⚠️ Cloud LLM failed ({e}). Falling back to local Qwen model...")
-                except Exception:
-                    pass
-                try:
-                    fallback_llm = ChatOllama(model="qwen2.5:3b", temperature=0.7)
-                    fallback_response = fallback_llm.invoke(prompt)
-                    return fallback_response.content.strip()
-                except Exception as fallback_err:
-                    print(f"[dialectic] Fallback to local Qwen failed: {fallback_err}. Re-raising original exception.")
-                    raise e
+                continue
+
+            # Any other non-retriable error → fall back
+            print(f"[dialectic] LLM invoke failed with error: {e}. Falling back...")
+            break
+
+    # ── Fallback chain: Llama 3.1 70B → Qwen local ──
+    print("[dialectic] Falling back to Llama 3.1 70B (Nvidia NIM)...")
+    try:
+        fallback_llm = _load_fallback_llm()  # Llama 3.1 70B via Nvidia NIM
+        fallback_response = fallback_llm.invoke(prompt)
+        return fallback_response.content.strip()
+    except Exception as llama_err:
+        print(f"[dialectic] Llama fallback failed: {llama_err}. Falling back to Mistral Large 3...")
+        try:
+            from langchain_openai import ChatOpenAI
+            import os
+            fallback_llm2 = ChatOpenAI(
+                model="mistralai/mistral-large-3-675b-instruct-2512",
+                base_url="https://integrate.api.nvidia.com/v1",
+                api_key=os.environ.get("NVIDIA_API_KEY"),
+                temperature=0.7
+            )
+            original_invoke2 = fallback_llm2.invoke
+            def tracked_invoke2(*args, **kwargs):
+                print("🤖 [LLM CALL] -> Model: mistralai/mistral-large-3 (Nvidia NIM Fallback)")
+                return original_invoke2(*args, **kwargs)
+            object.__setattr__(fallback_llm2, "invoke", tracked_invoke2)
+            fallback_response2 = fallback_llm2.invoke(prompt)
+            return fallback_response2.content.strip()
+        except Exception as mistral_err:
+            print(f"[dialectic] All fallbacks failed: {mistral_err}")
+            raise
 
 def bull_case(idea_name: str, idea_content: str, market: str, analysis_text: str, round_num: int, history: str, llm, sector: str = "", team_size: str = "", budget: str = "") -> str:
     """
@@ -95,6 +116,7 @@ You are an optimistic VC partner championing this startup. Your goal is to argue
 {constraints_text}
 Use the market research and analysis to back up your points with specific facts, CAGR, market size, and customer pain points.
 Explain why {idea_name} is highly realistic, feasible, and scalable within these specific team size and budget constraints.
+CRITICAL INSTRUCTION: Base your entire debate ONLY on the startup description provided above. Do NOT hallucinate features, products, or business models that are not explicitly mentioned in the description. Focus your arguments strictly on the market potential and feasibility of what is actually described.
 Provide 3-5 structured, strong arguments for investing in {idea_name}. Be professional, persuasive, and quantitative where possible.
 Do not write any pleasantries or introductory meta-text. Jump straight into the pro-arguments.
 """
@@ -142,6 +164,7 @@ You are a skeptical, risk-focused venture investor. Your goal is to argue why th
 {analysis_text}
 {constraints_text}
 Particularly scrutinize if {idea_name} is actually realistic and executable under these team size and budget constraints. Highlight resource bottlenecks.
+CRITICAL INSTRUCTION: Base your entire debate ONLY on the startup description provided above. Do NOT hallucinate flaws in features or products that the startup never claimed to build. Attack the actual concept described.
 Here is the Bull investor's argument:
 {history}
 
@@ -192,6 +215,7 @@ Here is the complete debate transcript:
 Evaluate the strength, evidence quality, and logical consistency of both sides' arguments. Also perform a novelty check (is this too generic/copycat?) and a feasibility check (is the team size and budget realistic and sufficient for this specific sector and idea?).
 
 Decide whether this startup is INVESTABLE or NOT INVESTABLE. We only fund startup ideas that have a clear moat, high growth potential, realistic feasibility under the constraints, and manageable risks.
+CRITICAL INSTRUCTION: Remember this is a startup concept operating with a budget/stage of "{budget}". Every new startup at this stage has massive risks, unproven moats, and fierce competition. Do NOT reject an idea simply because it has risks. You should rate it INVESTABLE if the core problem is real, the solution is plausible under the {budget} constraints, and the market opportunity is large enough to justify the risk. Be an optimistic venture capitalist looking for reasons to invest, rather than a pessimistic analyst looking for reasons to pass.
 
 You MUST respond in the following format:
 
@@ -302,28 +326,48 @@ Do not include any thinking block in your output. Start your response with "/no_
         "bear_summary": bear_summary_val
     }
 
-def run_dialectic(idea_name: str, idea_content: str, market: str, analysis_text: str, llm, sector: str = "", team_size: str = "", budget: str = "") -> dict:
+def run_dialectic(
+    idea_name: str,
+    idea_content: str,
+    market: str,
+    analysis_text: str,
+    debate_llm=None,
+    judge_llm=None,
+    sector: str = "",
+    team_size: str = "",
+    budget: str = "",
+) -> dict:
     """
     Orchestrates the 1-round Bull vs Bear debate and invokes the Judge for final decision.
+
+    Args:
+        debate_llm: LLM for Bull and Bear agents (e.g. DeepSeek V4 Pro — creative reasoning).
+        judge_llm:  LLM for the Investment Judge (e.g. Llama 3.1 70B — structured evaluation).
+                    Falls back to debate_llm if not provided.
     """
+    if debate_llm is None:
+        debate_llm = _load_fallback_llm()
+    if judge_llm is None:
+        judge_llm = debate_llm
+
     transcript = []
-    
+
     # Round 1: Bull Initial Case
-    bull_r1 = bull_case(idea_name, idea_content, market, analysis_text, 1, "", llm, sector, team_size, budget)
+    bull_r1 = bull_case(idea_name, idea_content, market, analysis_text, 1, "", debate_llm, sector, team_size, budget)
     transcript.append({"role": "Bull (Round 1)", "content": bull_r1})
-    
+
     # Round 1: Bear Counter (with history of Bull R1)
     history_for_bear_r1 = f"Bull (Round 1):\n{bull_r1}"
-    bear_r1 = bear_case(idea_name, idea_content, market, analysis_text, 1, history_for_bear_r1, llm, sector, team_size, budget)
+    bear_r1 = bear_case(idea_name, idea_content, market, analysis_text, 1, history_for_bear_r1, debate_llm, sector, team_size, budget)
     transcript.append({"role": "Bear (Round 1)", "content": bear_r1})
-    
+
     # Full history for judge
     full_history = (
         f"--- Round 1: Bull Case ---\n{bull_r1}\n\n"
         f"--- Round 1: Bear Case ---\n{bear_r1}"
     )
-    
-    verdict = investment_judge(idea_name, idea_content, market, analysis_text, full_history, llm, sector, team_size, budget)
+
+    verdict = investment_judge(idea_name, idea_content, market, analysis_text, full_history, judge_llm, sector, team_size, budget)
     verdict["transcript"] = transcript
     return verdict
 

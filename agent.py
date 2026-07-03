@@ -1,12 +1,11 @@
 import os
 import streamlit as st
-from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from web_research import deep_web_research
 from database import init_db, save_idea, get_all_ideas, delete_idea
 from judge import judge_idea
 from pain_points import gather_pain_points
-from dialectic import run_dialectic, bull_case, bear_case, investment_judge
+from dialectic import run_dialectic, invoke_with_retry
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -14,7 +13,11 @@ load_dotenv(override=True)
 # =====================================
 # DATABASE INIT
 # =====================================
-init_db()
+_db_error = None
+try:
+    init_db()
+except Exception as _e:
+    _db_error = _e  # Store error, show it in UI after page config
 
 # =====================================
 # PAGE CONFIG
@@ -25,6 +28,16 @@ st.set_page_config(
     page_icon="🚀",
     layout="wide"
 )
+
+# Show DB connection error as a banner (doesn't crash the app)
+if _db_error:
+    st.error(
+        f"⚠️ **Database connection failed** — the app is running but cannot save/load ideas.\n\n"
+        f"**Error:** `{_db_error}`\n\n"
+        f"**Fix:** Port 5432 is likely blocked by your network firewall (school/office Wi-Fi). "
+        f"Switch to a mobile hotspot or home Wi-Fi to connect to Neon."
+    )
+    st.stop()
 
 # =====================================
 # SESSION STATE INIT
@@ -92,36 +105,63 @@ st.write(
 # LOAD AGENTS
 # =====================================
 
-@st.cache_resource
-def load_llm():
-    return ChatOllama(
-        model="qwen2.5:3b",
-        temperature=0.7,
-    )
-
 import gemini_tracker
+from langchain_google_genai import ChatGoogleGenerativeAI
 
+# ── Gemini 1.5 Flash: Information extraction (pain points, market analysis) ──
 @st.cache_resource
-def load_nvidia_llm():
-    llm = ChatOpenAI(
-        model="deepseek-ai/deepseek-v4-pro",
-        base_url="https://integrate.api.nvidia.com/v1",
-        api_key=os.environ.get("NVIDIA_API_KEY"),
-        temperature=0.7,
+def load_gemini_llm():
+    llm = ChatGoogleGenerativeAI(
+        model="gemini-2.0-flash",
+        temperature=0.2,
+        google_api_key=os.environ.get("GEMINI_API_KEY"),
     )
     original_invoke = llm.invoke
     def tracked_invoke(*args, **kwargs):
-        gemini_tracker.track_call()
+        print("🤖 [LLM CALL] -> Model: Gemini 2.0 Flash (Google)")
         return original_invoke(*args, **kwargs)
     object.__setattr__(llm, "invoke", tracked_invoke)
     return llm
 
+def _make_nvidia_llm(model: str, temperature: float):
+    """Helper to create a tracked Nvidia NIM LLM."""
+    llm = ChatOpenAI(
+        model=model,
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key=os.environ.get("NVIDIA_API_KEY"),
+        temperature=temperature,
+    )
+    original_invoke = llm.invoke
+    def tracked_invoke(*args, **kwargs):
+        print(f"🤖 [LLM CALL] -> Model: {model} (Nvidia NIM)")
+        return original_invoke(*args, **kwargs)
+    object.__setattr__(llm, "invoke", tracked_invoke)
+    return llm
+
+# ── DeepSeek V4 Flash: Creative idea generation ──
+@st.cache_resource
+def load_deepseek_flash_llm():
+    return _make_nvidia_llm("deepseek-ai/deepseek-v4-flash", temperature=0.8)
+
+# ── DeepSeek V4 Pro: Bull/Bear debate (complex reasoning) ──
+@st.cache_resource
+def load_nvidia_llm():
+    return _make_nvidia_llm("deepseek-ai/deepseek-v4-pro", temperature=0.7)
+
+# ── Llama 3.1 70B: Originality judge + Investment judge (structured evaluation) ──
+@st.cache_resource
+def load_llama_llm():
+    return _make_nvidia_llm("meta/llama-3.1-70b-instruct", temperature=0.2)
+
 try:
-    idea_llm = load_llm()
+    gemini_llm = load_gemini_llm()
+    deepseek_flash_llm = load_deepseek_flash_llm()
     nvidia_llm = load_nvidia_llm()
+    llama_llm = load_llama_llm()
 except Exception as e:
     st.error(f"❌ Failed to load models:\n\n{e}")
     st.stop()
+
 
 # =====================================
 # STEP 1: USER INPUT & PAIN POINT GATHERING
@@ -223,7 +263,7 @@ No other text.
             candidates = []
             try:
                 from dialectic import invoke_with_retry
-                response_content = invoke_with_retry(nvidia_llm, extraction_prompt)
+                response_content = invoke_with_retry(gemini_llm, extraction_prompt)
                 candidates = [l.strip().lstrip('-').strip() for l in response_content.split('\n') if l.strip().startswith('-')]
             except Exception as e:
                 pass
@@ -237,7 +277,7 @@ No other text.
 
             try:
                 from embeddings import filter_and_ensure_unique_pain_points
-                synthesized_needs = filter_and_ensure_unique_pain_points(candidates, st.session_state.market, nvidia_llm)
+                synthesized_needs = filter_and_ensure_unique_pain_points(candidates, st.session_state.market, gemini_llm)
             except Exception as e:
                 synthesized_needs = candidates[:3]
 
@@ -353,12 +393,8 @@ Keep it between 200-400 words.>
 """
 
                 with st.spinner(f"💡 Generating startup idea (Attempt {orig_attempt})..."):
-                    temp_llm = ChatOllama(
-                        model="qwen2.5:3b",
-                        temperature=min(0.7 + (orig_attempt - 1) * 0.1, 1.2)
-                    )
-                    idea_response = temp_llm.invoke(idea_prompt)
-                    idea_raw = idea_response.content.strip()
+                    idea_response = invoke_with_retry(deepseek_flash_llm, idea_prompt)
+                    idea_raw = idea_response.strip()
 
                 # Parse startup name and description
                 if "STARTUP NAME:" in idea_raw:
@@ -374,7 +410,7 @@ Keep it between 200-400 words.>
                     temp_content = idea_raw
 
                 with st.spinner(f"🧑‍⚖️ Judge is reviewing Attempt {orig_attempt} for originality..."):
-                    orig_verdict = judge_idea(st.session_state.market, temp_name, temp_content)
+                    orig_verdict = judge_idea(st.session_state.market, temp_name, temp_content, llm=llama_llm)
 
                 if orig_verdict["approved"]:
                     originality_approved = True
@@ -403,32 +439,31 @@ Based on this research report, provide a structured, detailed analysis covering:
 
 Ensure your analysis is grounded in the facts and data cited in the research report. Cite specific data points. Keep the analysis under 600 words.
 """
-                analysis_response = idea_llm.invoke(analysis_prompt)
-                analysis_text = analysis_response.content
+                analysis_response = invoke_with_retry(gemini_llm, analysis_prompt)
+                analysis_text = analysis_response.strip()
 
-            # --- STAGE 3: Run dialectic debate ---
+            # --- STAGE 3: Run dialectic debate via run_dialectic() ---
             with st.status(f"🐂🐻⚖️ Running Dialectic Investment Debate for '{idea_name}'...", expanded=True) as status:
-                st.write("📢 **Round 1: Bull Initial Case**")
-                bull_r1 = bull_case(idea_name, idea_content, st.session_state.market, analysis_text, 1, "", nvidia_llm, sector=st.session_state.sector, team_size=st.session_state.team_size, budget=st.session_state.budget)
-                st.markdown(bull_r1)
-                st.markdown("---")
-
-                st.write("📢 **Round 1: Bear Counter**")
-                history_for_bear_r1 = f"Bull (Round 1):\n{bull_r1}"
-                bear_r1 = bear_case(idea_name, idea_content, st.session_state.market, analysis_text, 1, history_for_bear_r1, nvidia_llm, sector=st.session_state.sector, team_size=st.session_state.team_size, budget=st.session_state.budget)
-                st.markdown(bear_r1)
-                st.markdown("---")
-
-                st.write("⚖️ **Judge Evaluating...**")
-                full_history = (
-                    f"--- Round 1: Bull Case ---\n{bull_r1}\n\n"
-                    f"--- Round 1: Bear Case ---\n{bear_r1}"
+                dialectic_result = run_dialectic(
+                    idea_name=idea_name,
+                    idea_content=idea_content,
+                    market=st.session_state.market,
+                    analysis_text=analysis_text,
+                    debate_llm=nvidia_llm,
+                    judge_llm=llama_llm,
+                    sector=st.session_state.sector,
+                    team_size=st.session_state.team_size,
+                    budget=st.session_state.budget,
                 )
-                dialectic_result = investment_judge(idea_name, idea_content, st.session_state.market, analysis_text, full_history, nvidia_llm, sector=st.session_state.sector, team_size=st.session_state.team_size, budget=st.session_state.budget)
-                dialectic_result["transcript"] = [
-                    {"role": "Bull (Round 1)", "content": bull_r1},
-                    {"role": "Bear (Round 1)", "content": bear_r1},
-                ]
+
+                for turn in dialectic_result["transcript"]:
+                    role = turn["role"]
+                    if "Bull" in role:
+                        st.write(f"📢 **{role}**")
+                    else:
+                        st.write(f"📢 **{role}**")
+                    st.markdown(turn["content"])
+                    st.markdown("---")
 
                 if dialectic_result["investable"]:
                     status.update(label=f"✅ Approved by Investment Judge (Score: {dialectic_result['score']}/10)", state="complete")
@@ -447,17 +482,23 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
         st.session_state.analysis_text = analysis_text
         st.session_state.dialectic_result = dialectic_result
 
-        # Save to database (only once per generation)
-        saved_content = (
-            f"{idea_content}\n\n"
-            f"### Comprehensive Analysis\n{analysis_text}\n\n"
-            f"### ⚖️ Dialectic Investment Debate\n"
-            f"**Verdict:** {dialectic_result['verdict']} (Score: {dialectic_result['score']}/10)\n\n"
-            f"**Decision Explanation:**\n{dialectic_result['explanation']}\n\n"
-            f"**Bull Case Summary:**\n{dialectic_result['bull_summary']}\n\n"
-            f"**Bear Case Summary:**\n{dialectic_result['bear_summary']}"
-        )
-        save_idea(st.session_state.market, idea_name, saved_content)
+        # Bug Fix: Only save to DB if the investment judge approved the idea
+        if pipeline_approved:
+            save_idea(
+                topic=st.session_state.market,
+                idea_name=idea_name,
+                idea_description=idea_content,
+                analysis=analysis_text,
+                verdict=dialectic_result.get("verdict", ""),
+                score=dialectic_result.get("score"),
+                explanation=dialectic_result.get("explanation", ""),
+                bull_summary=dialectic_result.get("bull_summary", ""),
+                bear_summary=dialectic_result.get("bear_summary", ""),
+                pain_point=st.session_state.selected_pain_point,
+                sector=st.session_state.sector,
+                team_size=st.session_state.team_size,
+                budget=st.session_state.budget,
+            )
 
     # Retrieve from session state
     idea_name = st.session_state.idea_name

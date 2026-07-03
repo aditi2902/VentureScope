@@ -1,105 +1,167 @@
-import sqlite3
-from datetime import datetime
+"""
+database.py — Neon (PostgreSQL) backend for AI Startup Agent.
 
-DB_NAME = "startup_ideas.db"
+All ideas are now stored with proper structured columns so every field
+can be queried independently. No more giant markdown blobs.
 
+Requires DATABASE_URL in .env:
+    DATABASE_URL=postgresql://user:password@ep-xxx.neon.tech/neondb?sslmode=require
+"""
+
+import os
+from dotenv import load_dotenv
+
+load_dotenv(override=True)
+
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+
+
+def _get_conn():
+    """Return a live psycopg2 connection to Neon."""
+    if not DATABASE_URL:
+        raise RuntimeError(
+            "DATABASE_URL is not set. Add it to your .env file.\n"
+            "Format: postgresql://user:password@ep-xxx.neon.tech/neondb?sslmode=require"
+        )
+    import psycopg2
+    return psycopg2.connect(DATABASE_URL)
+
+
+# ─────────────────────────────────────────────
+# INIT
+# ─────────────────────────────────────────────
 
 def init_db():
-    """Create the startup ideas and pain points tables if they don't exist, and migrate if needed."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    
-    # Existing ideas table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS ideas (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT NOT NULL,
-            topic TEXT NOT NULL,
-            idea_name TEXT NOT NULL,
-            idea_content TEXT NOT NULL
-        )
-    """)
-    
-    # Check if 'embedding' column exists in ideas
-    cursor.execute("PRAGMA table_info(ideas)")
-    columns = [col[1] for col in cursor.fetchall()]
-    if "embedding" not in columns:
-        cursor.execute("ALTER TABLE ideas ADD COLUMN embedding BLOB")
-        conn.commit()
-        
-    # Backfill missing embeddings for ideas
-    cursor.execute("SELECT id, idea_name, idea_content FROM ideas WHERE embedding IS NULL")
-    missing = cursor.fetchall()
-    if missing:
-        try:
-            from embeddings import embed_text
-            for row_id, name, content in missing:
-                text_to_embed = f"{name}\n\n{content}"
-                emb_arr = embed_text(text_to_embed)
-                cursor.execute(
-                    "UPDATE ideas SET embedding = ? WHERE id = ?",
-                    (emb_arr.tobytes(), row_id)
-                )
-            conn.commit()
-        except Exception as e:
-            pass
+    """
+    Create tables if they don't exist.
+    ideas table has fully structured columns — no more markdown blobs.
+    """
+    conn = _get_conn()
+    cur = conn.cursor()
 
-    # NEW: pain_points memory table
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS pain_points (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT NOT NULL,
-            topic TEXT NOT NULL,
-            pain_point TEXT NOT NULL,
-            embedding BLOB
+    # Fully structured ideas table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS ideas (
+            id               SERIAL PRIMARY KEY,
+            timestamp        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            topic            TEXT NOT NULL,
+            sector           TEXT,
+            team_size        TEXT,
+            budget           TEXT,
+            pain_point       TEXT,
+            idea_name        TEXT NOT NULL,
+            idea_description TEXT NOT NULL,
+            analysis         TEXT,
+            verdict          TEXT,
+            score            REAL,
+            explanation      TEXT,
+            bull_summary     TEXT,
+            bear_summary     TEXT,
+            embedding        BYTEA
         )
     """)
+
+    # Pain points memory table
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS pain_points (
+            id          SERIAL PRIMARY KEY,
+            timestamp   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            topic       TEXT NOT NULL,
+            pain_point  TEXT NOT NULL,
+            embedding   BYTEA
+        )
+    """)
+
     conn.commit()
+    cur.close()
     conn.close()
 
 
-def save_idea(topic: str, idea_name: str, idea_content: str, embedding: bytes = None):
-    """Save a judge-approved startup idea to the database, along with its embedding."""
+# ─────────────────────────────────────────────
+# IDEAS
+# ─────────────────────────────────────────────
+
+def save_idea(
+    topic: str,
+    idea_name: str,
+    idea_description: str,
+    analysis: str = "",
+    verdict: str = "",
+    score: float = None,
+    explanation: str = "",
+    bull_summary: str = "",
+    bear_summary: str = "",
+    pain_point: str = "",
+    sector: str = "",
+    team_size: str = "",
+    budget: str = "",
+    embedding: bytes = None,
+):
+    """Save a judge-approved startup idea with all fields stored in separate columns."""
+    # Generate embedding from idea name + description if not provided
     if embedding is None:
         try:
             from embeddings import embed_text
-            text_to_embed = f"{idea_name}\n\n{idea_content}"
-            emb_arr = embed_text(text_to_embed)
+            emb_arr = embed_text(f"{idea_name}\n\n{idea_description}")
             embedding = emb_arr.tobytes()
-        except Exception as e:
+        except Exception:
             embedding = None
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute("""
-        INSERT INTO ideas (timestamp, topic, idea_name, idea_content, embedding)
-        VALUES (?, ?, ?, ?, ?)
-    """, (timestamp, topic, idea_name, idea_content, embedding))
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO ideas (
+            topic, sector, team_size, budget, pain_point,
+            idea_name, idea_description, analysis,
+            verdict, score, explanation, bull_summary, bear_summary,
+            embedding
+        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """, (
+        topic, sector, team_size, budget, pain_point,
+        idea_name, idea_description, analysis,
+        verdict, score, explanation, bull_summary, bear_summary,
+        embedding,
+    ))
     conn.commit()
+    cur.close()
     conn.close()
 
 
 def get_all_ideas():
     """Retrieve all saved startup ideas, latest first."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id, timestamp, topic, idea_name, idea_content, embedding 
-        FROM ideas 
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, timestamp, topic, sector, team_size, budget, pain_point,
+               idea_name, idea_description, analysis,
+               verdict, score, explanation, bull_summary, bear_summary, embedding
+        FROM ideas
         ORDER BY id DESC
     """)
-    records = cursor.fetchall()
+    records = cur.fetchall()
+    cur.close()
     conn.close()
 
     return [
         {
-            "id": r[0],
-            "timestamp": r[1],
-            "topic": r[2],
-            "idea_name": r[3],
-            "idea_content": r[4],
-            "embedding": r[5],
+            "id":               r[0],
+            "timestamp":        str(r[1]),
+            "topic":            r[2],
+            "sector":           r[3],
+            "team_size":        r[4],
+            "budget":           r[5],
+            "pain_point":       r[6],
+            "idea_name":        r[7],
+            # "idea_content" kept as alias so sidebar UI code doesn't break
+            "idea_content":     r[8],
+            "idea_description": r[8],
+            "analysis":         r[9],
+            "verdict":          r[10],
+            "score":            r[11],
+            "explanation":      r[12],
+            "bull_summary":     r[13],
+            "bear_summary":     r[14],
+            "embedding":        r[15],
         }
         for r in records
     ]
@@ -107,55 +169,58 @@ def get_all_ideas():
 
 def delete_idea(idea_id: int):
     """Delete a specific startup idea by ID."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM ideas WHERE id = ?", (idea_id,))
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM ideas WHERE id = %s", (idea_id,))
     conn.commit()
+    cur.close()
     conn.close()
 
 
+# ─────────────────────────────────────────────
+# PAIN POINTS MEMORY
+# ─────────────────────────────────────────────
+
 def save_generated_pain_point(topic: str, pain_point: str, embedding: bytes = None):
-    """Save a generated pain point to the memory table with its embedding."""
+    """Save a generated pain point to the memory table."""
     if embedding is None:
         try:
             from embeddings import embed_text
-            emb_arr = embed_text(pain_point)
-            embedding = emb_arr.tobytes()
-        except Exception as e:
+            embedding = embed_text(pain_point).tobytes()
+        except Exception:
             embedding = None
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute("""
-        INSERT INTO pain_points (timestamp, topic, pain_point, embedding)
-        VALUES (?, ?, ?, ?)
-    """, (timestamp, topic, pain_point, embedding))
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO pain_points (topic, pain_point, embedding)
+        VALUES (%s, %s, %s)
+    """, (topic, pain_point, embedding))
     conn.commit()
+    cur.close()
     conn.close()
 
 
 def get_all_generated_pain_points():
     """Retrieve all stored pain points from memory."""
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("""
-        SELECT id, timestamp, topic, pain_point, embedding 
-        FROM pain_points 
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, timestamp, topic, pain_point, embedding
+        FROM pain_points
         ORDER BY id DESC
     """)
-    records = cursor.fetchall()
+    records = cur.fetchall()
+    cur.close()
     conn.close()
 
     return [
         {
-            "id": r[0],
-            "timestamp": r[1],
-            "topic": r[2],
+            "id":         r[0],
+            "timestamp":  str(r[1]),
+            "topic":      r[2],
             "pain_point": r[3],
-            "embedding": r[4],
+            "embedding":  r[4],
         }
         for r in records
     ]
-
-

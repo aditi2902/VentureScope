@@ -32,13 +32,16 @@ def _load_judge_llm():
     return llm
 
 
-def judge_idea(topic: str, idea_name: str, idea_content: str) -> dict:
+def judge_idea(topic: str, idea_name: str, idea_content: str, llm=None) -> dict:
     """
     Use a two-stage approach to judge whether a new startup idea is too similar
     to any previously approved ideas in the database.
 
     Stage 1: Vector cosine similarity on HuggingFace embeddings. If > 0.85, reject.
     Stage 2: LLM-as-a-Judge for finer nuance / semantic difference.
+
+    Args:
+        llm: Optional LLM to use. If None, loads the default judge LLM (Llama 3.1 70B).
     """
     all_ideas = get_all_ideas()
 
@@ -116,7 +119,8 @@ REASON: <one-sentence explaining which existing idea it duplicates and why>
 /no_think"""
 
     from dialectic import invoke_with_retry
-    llm = _load_judge_llm()
+    if llm is None:
+        llm = _load_judge_llm()
     raw = invoke_with_retry(llm, judge_prompt)
 
     # Parse the verdict
