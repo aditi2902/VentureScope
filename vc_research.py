@@ -8,6 +8,7 @@ optional Crunchbase Basic API integration when CRUNCHBASE_API_KEY is set.
 
 import logging
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import requests
@@ -31,12 +32,31 @@ _HEADERS = {
     )
 }
 
+# Patterns that strongly suggest a VC firm name
+_VC_NAME_PATTERNS = [
+    re.compile(r'\b([A-Z][A-Za-z0-9\'&.\s]+?(?:Capital|Ventures|Partners|Equity|Group|Fund|Investments|Associates|Advisors|Global|Growth))\b'),
+    re.compile(r'led\s+by\s+([A-Z][A-Za-z0-9\s&.]+?)(?:[,]|\s+invested|\s+participated|\s+and|\s+at\s+|$)'),
+    re.compile(r'raised\s+\$[\d.,]+\s*(?:million|billion|M|B|Mn|Bn)?\s*(?:in\s+)?(?:funding|Series|Seed|Round|from).*?(?:from\s+|led\s+by\s+)([A-Z][A-Za-z0-9\s&.\']+?)(?:[,]|\s+and|\s+\.|$)'),
+]
+
+# Known notable VC firms to catch even without pattern matches
+_KNOWN_VC = [
+    "Andreessen Horowitz", "a16z", "Sequoia Capital", "Accel", "Benchmark",
+    "Greylock Partners", "Kleiner Perkins", "Bessemer Venture Partners",
+    "Index Ventures", "Lightspeed Venture Partners", "Insight Partners",
+    "General Catalyst", "Founders Fund", "Y Combinator", "First Round Capital",
+    "Union Square Ventures", "Tiger Global", "SoftBank", "Coatue",
+    "Menlo Ventures", "Redpoint Ventures", "NEA", "Battery Ventures",
+    "Felicis Ventures", "GV", "Khosla Ventures", "Matrix Partners",
+    "Mayfield Fund", "Spark Capital", "Venrock", "8VC",
+]
+
 
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
-def _fetch_page_text(url: str, max_chars: int = 500) -> str:
+def _fetch_page_text(url: str, max_chars: int = 800) -> str:
     """Download a URL and extract main text via trafilatura."""
     try:
         import trafilatura
@@ -49,8 +69,8 @@ def _fetch_page_text(url: str, max_chars: int = 500) -> str:
         return ""
 
 
-def _serper_vc_query(query: str, max_results: int, deep: bool = False) -> list[dict]:
-    """Run a Serper search and optionally deep-scrape result pages."""
+def _search_vc(query: str, max_results: int, deep: bool = False) -> list[dict]:
+    """Run a web search and optionally deep-scrape result pages."""
     results = web_search(query, max_results=max_results)
     if not results:
         return []
@@ -62,6 +82,27 @@ def _serper_vc_query(query: str, max_results: int, deep: bool = False) -> list[d
                 if page_text:
                     r["page_text"] = page_text
     return results
+
+
+def _extract_vc_names(text: str) -> set[str]:
+    """Extract likely VC firm names from a text string."""
+    found = set()
+
+    # Pattern-based extraction
+    for pattern in _VC_NAME_PATTERNS:
+        for match in pattern.finditer(text):
+            name = match.group(1).strip().rstrip(",").rstrip(".")
+            # Filter out false positives
+            if len(name) > 3 and not name.lower().startswith(("the ", "this ", "that ")):
+                found.add(name)
+
+    # Known VC check (catch names that don't match patterns)
+    text_lower = text.lower()
+    for name in _KNOWN_VC:
+        if name.lower() in text_lower:
+            found.add(name)
+
+    return found
 
 
 def _crunchbase_search_vc_firms(market: str, limit: int = 5) -> list[dict]:
@@ -151,37 +192,56 @@ def find_vcs(
     Returns:
         A structured markdown report of relevant VC firms.
     """
-    # Build diverse queries to surface VC firms
-    queries = [
+    # -- Queries that surface VC firm names ---------------------------------
+    vc_queries = [
+        f'"top venture capital" "{market}" list firms',
+        f'"{market}" startup "raised" "led by" OR "from" funding',
+        f'"{market}" "series" funding investor venture capital',
+    ]
+
+    # -- General queries (original) -----------------------------------------
+    general_queries = [
         f'"venture capital" "{market}" investors funding portfolio',
         f'"{market}" startups raised "series A" OR seed investors funding',
-        f'site:crunchbase.com "{market}" investors funding portfolio',
-        f'site:angellist.com "{market}" venture capital investors',
+        f'crunchbase "{market}" investors funding',
+        f'angellist "{market}" venture capital investors',
         f'"{idea_name}" similar startups funded investors',
         f'"{market}" "pain point" startup funding investors venture',
     ]
 
-    # -- Parallel Serper searches -------------------------------------------
+    all_queries = vc_queries + general_queries
+    num_vc_queries = len(vc_queries)
+
+    # -- Parallel search ----------------------------------------------------
     all_results: list[dict] = []
     seen_urls: set[str] = set()
+    all_vc_names: set[str] = set()
 
     def _search(query: str, idx: int):
-        results = _serper_vc_query(query, max_results=max_results, deep=idx < max_deep_scrape)
+        deep = idx < max_deep_scrape
+        results = _search_vc(query, max_results=max_results, deep=deep)
         for r in results:
+            # Extract VC names from every result
+            text = f"{r.get('title', '')} {r.get('body', '')} {r.get('page_text', '')}"
+            all_vc_names.update(_extract_vc_names(text))
+
             url = r.get("href", "")
             if url and url not in seen_urls:
                 seen_urls.add(url)
                 all_results.append(r)
 
-    with ThreadPoolExecutor(max_workers=len(queries)) as pool:
-        futures = {pool.submit(_search, q, i): q for i, q in enumerate(queries)}
+    with ThreadPoolExecutor(max_workers=len(all_queries)) as pool:
+        futures = {pool.submit(_search, q, i): q for i, q in enumerate(all_queries)}
         for _ in as_completed(futures):
             pass
 
     # -- Optional Crunchbase search -----------------------------------------
     cb_firms = _crunchbase_search_vc_firms(market, limit=max_results)
+    for firm in cb_firms:
+        if firm["name"]:
+            all_vc_names.add(firm["name"])
 
-    # -- Deduplicate Serper results by title --------------------------------
+    # -- Deduplicate by title -----------------------------------------------
     seen_titles: set[str] = set()
     unique_results: list[dict] = []
     for r in all_results:
@@ -193,6 +253,45 @@ def find_vcs(
     # -- Build the markdown report ------------------------------------------
     report = f"## VC Investment Landscape: {market}\n\n"
 
+    # VC Firms section (new)
+    if all_vc_names:
+        _VC_SUFFIXES = ("Capital", "Ventures", "Partners", "Equity", "Fund", "Group", "Investments", "Global", "Growth", "Associates", "Advisors")
+
+        clean_names = set()
+        for name in sorted(all_vc_names, key=lambda x: -len(x)):
+            lower = name.lower()
+            if len(name) < 4:
+                continue
+            # Skip obviously generic phrases
+            if any(lower.startswith(skip) for skip in [
+                "top ", "list ", "best ", "series ", "how to ", "guide ",
+            ]):
+                continue
+            if lower in ("top 13 global",):
+                continue
+            # Strip leading noise words
+            for prefix in ("Crunchbase ", "AngelList ", "Site:"):
+                if name.startswith(prefix):
+                    name = name[len(prefix):]
+                    break
+            # Skip sentences / long phrases (VC names are 1–5 words)
+            if len(name.split()) > 5:
+                continue
+            # Skip phrases that contain "has" / "including" / "today" etc.
+            if any(w in name.lower().split() for w in ("has", "including", "today", "get", "find", "with", "their")):
+                continue
+            # Must look like a firm name: ends with a VC suffix OR is a known VC
+            if not (name.endswith(_VC_SUFFIXES) or name in _KNOWN_VC):
+                continue
+            clean_names.add(name)
+
+        if clean_names:
+            report += "### VC Firms\n"
+            for name in sorted(clean_names)[:15]:
+                report += f"- **{name}**\n"
+            report += "\n"
+
+    # Crunchbase section (kept as-is)
     if cb_firms:
         report += "### Crunchbase — VC Firms in this Space\n"
         for firm in cb_firms:
@@ -210,6 +309,7 @@ def find_vcs(
                 report += f"  - [{website}]({website})\n"
         report += "\n"
 
+    # Web search results (kept as-is)
     if unique_results:
         report += "### Web Search — Investors & Funding Activity\n"
         for i, r in enumerate(unique_results[: max_results * 2], 1):
