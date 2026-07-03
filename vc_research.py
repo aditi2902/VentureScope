@@ -130,6 +130,7 @@ def find_vcs(
     pain_point: str,
     max_results: int = 5,
     max_deep_scrape: int = 2,
+    max_chars: int = 3000,
 ) -> str:
     """
     Search for Venture Capital firms investing in the given market/domain.
@@ -145,6 +146,7 @@ def find_vcs(
         pain_point: The selected pain point the idea addresses.
         max_results: Number of results per Serper query (configurable depth).
         max_deep_scrape: Number of queries whose results get deep-scraped.
+        max_chars: Maximum report length (0 = no limit).
 
     Returns:
         A structured markdown report of relevant VC firms.
@@ -226,8 +228,8 @@ def find_vcs(
     else:
         report += "No VC-related results found via web search.\n"
 
-    if len(report) > 3000:
-        report = report[:2900] + "\n\n… (truncated for brevity)"
+    if max_chars and len(report) > max_chars:
+        report = report[: max_chars - 60] + "\n\n… (truncated for brevity)"
 
     return report
 
@@ -246,6 +248,7 @@ if __name__ == "__main__":
     parser.add_argument("--pain-point", default="Users cannot accurately track their long-term fitness progress across different workout types.", help="Pain point being solved")
     parser.add_argument("--max-results", type=int, default=5, help="Results per query")
     parser.add_argument("--deep", type=int, default=2, help="Number of queries to deep-scrape")
+    parser.add_argument("--no-truncate", action="store_true", help="Disable output truncation")
 
     args = parser.parse_args()
 
@@ -258,6 +261,7 @@ if __name__ == "__main__":
         pain_point=args.pain_point,
         max_results=args.max_results,
         max_deep_scrape=args.deep,
+        max_chars=0 if args.no_truncate else 3000,
     )
 
     print(report)
