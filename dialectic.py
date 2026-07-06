@@ -8,8 +8,6 @@ import os
 import time
 import random
 from langchain_openai import ChatOpenAI
-from langchain_ollama import ChatOllama
-import gemini_tracker
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -29,11 +27,15 @@ def _load_fallback_llm():
     object.__setattr__(llm, "invoke", tracked_invoke)
     return llm
 
-def invoke_with_retry(llm, prompt, max_retries=3, initial_delay=5.0) -> str:
+def invoke_with_retry(llm, prompt, max_retries=5, initial_delay=10.0) -> str:
     """
     Invokes the LLM with exponential backoff for transient RPM rate limits (429).
-    Immediately falls back to Llama 3.1 70B on daily quota exhaustion (RESOURCE_EXHAUSTED).
+    Falls back to Llama 3.1 70B on quota exhaustion or hard errors.
     """
+    # Preventative delay between NVIDIA NIM calls to respect the free-tier rate limit
+    if "ChatOpenAI" in str(type(llm)):
+        time.sleep(2)
+
     delay = initial_delay
     for attempt in range(max_retries):
         try:
@@ -45,7 +47,7 @@ def invoke_with_retry(llm, prompt, max_retries=3, initial_delay=5.0) -> str:
             is_rpm_limit = "429" in err_str and not is_daily_quota
             is_not_found = "404" in err_str or "NOT_FOUND" in err_str
 
-            # Daily quota or model not found → jump to fallback immediately, no point retrying
+            # Daily quota or model not found → jump to fallback immediately
             if is_daily_quota or is_not_found:
                 print(f"[dialectic] Hard quota/404 error — skipping retries, falling back immediately: {e}")
                 break
@@ -62,33 +64,15 @@ def invoke_with_retry(llm, prompt, max_retries=3, initial_delay=5.0) -> str:
             print(f"[dialectic] LLM invoke failed with error: {e}. Falling back...")
             break
 
-    # ── Fallback chain: Llama 3.1 70B → Qwen local ──
+    # Fallback: Llama 3.1 70B
     print("[dialectic] Falling back to Llama 3.1 70B (Nvidia NIM)...")
     try:
-        fallback_llm = _load_fallback_llm()  # Llama 3.1 70B via Nvidia NIM
+        fallback_llm = _load_fallback_llm()
         fallback_response = fallback_llm.invoke(prompt)
         return fallback_response.content.strip()
     except Exception as llama_err:
-        print(f"[dialectic] Llama fallback failed: {llama_err}. Falling back to Mistral Large 3...")
-        try:
-            from langchain_openai import ChatOpenAI
-            import os
-            fallback_llm2 = ChatOpenAI(
-                model="mistralai/mistral-large-3-675b-instruct-2512",
-                base_url="https://integrate.api.nvidia.com/v1",
-                api_key=os.environ.get("NVIDIA_API_KEY"),
-                temperature=0.7
-            )
-            original_invoke2 = fallback_llm2.invoke
-            def tracked_invoke2(*args, **kwargs):
-                print("🤖 [LLM CALL] -> Model: mistralai/mistral-large-3 (Nvidia NIM Fallback)")
-                return original_invoke2(*args, **kwargs)
-            object.__setattr__(fallback_llm2, "invoke", tracked_invoke2)
-            fallback_response2 = fallback_llm2.invoke(prompt)
-            return fallback_response2.content.strip()
-        except Exception as mistral_err:
-            print(f"[dialectic] All fallbacks failed: {mistral_err}")
-            raise
+        print(f"[dialectic] Llama fallback failed: {llama_err}")
+        raise
 
 def bull_case(idea_name: str, idea_content: str, market: str, analysis_text: str, round_num: int, history: str, llm, sector: str = "", team_size: str = "", budget: str = "") -> str:
     """
@@ -202,28 +186,42 @@ def investment_judge(idea_name: str, idea_content: str, market: str, analysis_te
         constraints_text = f"\n## Constraints & Execution Context:\n- Sector: {sector}\n- Team Size: {team_size}\n- Available Budget: {budget}\n"
 
     prompt = f"""/no_think
-You are the Lead Investment Partner at a top venture capital firm. You must judge a dialectic debate between a Bull investor (arguing for investing) and a Bear investor (arguing against investing) regarding the following startup idea.
+You are the Lead Investment Partner at a top venture capital firm. You are judging a structured dialectic debate between two investors about ONE specific startup idea. Read the idea description carefully — this is the ONLY thing being evaluated.
 
-Startup Name: {idea_name}
-Market/Domain: {market}
-Idea Description: {idea_content}
-Market Analysis: {analysis_text}
+## The Startup Being Evaluated
+**Name:** {idea_name}
+**Market/Domain:** {market}
+**Description:** {idea_content}
+
+## Market & Feasibility Context
+{analysis_text}
 {constraints_text}
-Here is the complete debate transcript:
+
+## Debate Transcript (Bull vs Bear, both arguing exclusively about {idea_name})
 {history}
 
-Evaluate the strength, evidence quality, and logical consistency of both sides' arguments. Also perform a novelty check (is this too generic/copycat?) and a feasibility check (is the team size and budget realistic and sufficient for this specific sector and idea?).
+## Your Task
+Evaluate the quality of BOTH sides' arguments about **{idea_name}** specifically. Do NOT evaluate a different idea or introduce your own startup concept.
 
-Decide whether this startup is INVESTABLE or NOT INVESTABLE. We only fund startup ideas that have a clear moat, high growth potential, realistic feasibility under the constraints, and manageable risks.
+Focus your evaluation on:
+1. **Argument strength**: Which side made stronger, more evidence-backed points about {idea_name}?
+2. **Feasibility**: Is the proposed solution realistic given the team size ({team_size}) and budget ({budget})?
+3. **Market opportunity**: Does {idea_name} address a real, large enough market to generate investor-grade returns?
+4. **Execution risk**: Are the Bear's risk concerns about {idea_name} credible and unmitigated?
+5. **Moat & defensibility**: Does {idea_name} have a sustainable competitive advantage?
+
 CRITICAL INSTRUCTION: Remember this is a startup concept operating with a budget/stage of "{budget}". Every new startup at this stage has massive risks, unproven moats, and fierce competition. Do NOT reject an idea simply because it has risks. You should rate it INVESTABLE if the core problem is real, the solution is plausible under the {budget} constraints, and the market opportunity is large enough to justify the risk. Be an optimistic venture capitalist looking for reasons to invest, rather than a pessimistic analyst looking for reasons to pass.
+DO NOT conduct an originality/novelty check — that has already been done. Focus purely on investment viability and debate quality.
+
+Decide whether **{idea_name}** is INVESTABLE or NOT INVESTABLE based on the debate and context above. We invest in ideas with a clear moat, high growth potential, realistic feasibility under the given constraints, and manageable risks.
 
 You MUST respond in the following format:
 
 VERDICT: <INVESTABLE or NOT INVESTABLE>
 SCORE: <an investment score from 1.0 to 10.0>
-EXPLANATION: <a detailed, objective explanation of your decision, summarizing the key arguments of both sides and why one won, specifically noting the constraints feasibility>
-BULL SUMMARY: <a brief summary of the Bull's key points>
-BEAR SUMMARY: <a brief summary of the Bear's key points>
+EXPLANATION: <a detailed, objective explanation of your decision about {idea_name}, summarizing the key arguments from both sides and why one won, specifically referencing the feasibility given the team size and budget constraints>
+BULL SUMMARY: <a brief summary of the Bull's key points about {idea_name}>
+BEAR SUMMARY: <a brief summary of the Bear's key points about {idea_name}>
 
 Do not include any thinking block in your output. Start your response with "/no_think".
 """
@@ -338,11 +336,11 @@ def run_dialectic(
     budget: str = "",
 ) -> dict:
     """
-    Orchestrates the 1-round Bull vs Bear debate and invokes the Judge for final decision.
+    Orchestrates the 2-round Bull vs Bear debate and invokes the Judge for final decision.
 
     Args:
-        debate_llm: LLM for Bull and Bear agents (e.g. DeepSeek V4 Pro — creative reasoning).
-        judge_llm:  LLM for the Investment Judge (e.g. Llama 3.1 70B — structured evaluation).
+        debate_llm: LLM for Bull and Bear agents.
+        judge_llm:  LLM for the Investment Judge.
                     Falls back to debate_llm if not provided.
     """
     if debate_llm is None:
@@ -361,66 +359,31 @@ def run_dialectic(
     bear_r1 = bear_case(idea_name, idea_content, market, analysis_text, 1, history_for_bear_r1, debate_llm, sector, team_size, budget)
     transcript.append({"role": "Bear (Round 1)", "content": bear_r1})
 
+    # Round 2: Bull Rebuttal
+    history_for_bull_r2 = (
+        f"--- Round 1: Bull Case ---\n{bull_r1}\n\n"
+        f"--- Round 1: Bear Case ---\n{bear_r1}"
+    )
+    bull_r2 = bull_case(idea_name, idea_content, market, analysis_text, 2, history_for_bull_r2, debate_llm, sector, team_size, budget)
+    transcript.append({"role": "Bull (Round 2)", "content": bull_r2})
+
+    # Round 2: Bear Counter-Rebuttal
+    history_for_bear_r2 = (
+        f"--- Round 1: Bull Case ---\n{bull_r1}\n\n"
+        f"--- Round 1: Bear Case ---\n{bear_r1}\n\n"
+        f"--- Round 2: Bull Rebuttal ---\n{bull_r2}"
+    )
+    bear_r2 = bear_case(idea_name, idea_content, market, analysis_text, 2, history_for_bear_r2, debate_llm, sector, team_size, budget)
+    transcript.append({"role": "Bear (Round 2)", "content": bear_r2})
+
     # Full history for judge
     full_history = (
         f"--- Round 1: Bull Case ---\n{bull_r1}\n\n"
-        f"--- Round 1: Bear Case ---\n{bear_r1}"
+        f"--- Round 1: Bear Case ---\n{bear_r1}\n\n"
+        f"--- Round 2: Bull Rebuttal ---\n{bull_r2}\n\n"
+        f"--- Round 2: Bear Counter-Rebuttal ---\n{bear_r2}"
     )
 
     verdict = investment_judge(idea_name, idea_content, market, analysis_text, full_history, judge_llm, sector, team_size, budget)
     verdict["transcript"] = transcript
     return verdict
-
-def synthesize_speech(text: str, speaker_id: int = 0) -> str:
-    """
-    Synthesizes speech for the given text using the multimodalart/MisoTTS Gradio space.
-    Returns the filepath of the generated audio file.
-    """
-    from gradio_client import Client, handle_file
-    import re
-    
-    # Clean up text (remove markdown formatting and headers)
-    clean_text = re.sub(r'#+\s*', '', text)
-    clean_text = re.sub(r'[\*\_]', '', clean_text)
-    
-    # Truncate text to stay fast and avoid exceeding space limitations (e.g. first 400 chars)
-    if len(clean_text) > 400:
-        clean_text = clean_text[:400] + "..."
-
-    try:
-        hf_token = os.environ.get("HF_TOKEN")
-        client = Client("multimodalart/MisoTTS", hf_token=hf_token) if hf_token else Client("multimodalart/MisoTTS")
-        result = client.predict(
-            text=clean_text,
-            ref_audio_path=handle_file('https://github.com/gradio-app/gradio/raw/main/test/test_files/audio_sample.wav'),
-            ref_text="Hello!!",
-            speaker_id=float(speaker_id),
-            max_length_s=30.0,
-            temperature=0.7,
-            topk=50.0,
-            api_name="/synthesize",
-        )
-        return result
-    except Exception as e:
-        print(f"[TTS] Cloud Gradio synthesize failed: {e}. Falling back to macOS 'say'...")
-        try:
-            import subprocess
-            import tempfile
-            
-            # Create a temporary file path for the wav file
-            fd, temp_wav_path = tempfile.mkstemp(suffix=".wav")
-            os.close(fd)
-            
-            # Select different voices for Bull vs Bear
-            # Bull (speaker_id=0): default voice (usually Alex/Fred)
-            # Bear (speaker_id=1): Samantha (female voice)
-            voice_args = []
-            if speaker_id == 1:
-                voice_args = ["-v", "Samantha"]
-            
-            cmd = ["say"] + voice_args + ["-o", temp_wav_path, "--data-format=LEI16@22050", clean_text]
-            subprocess.run(cmd, check=True)
-            return temp_wav_path
-        except Exception as fallback_err:
-            print(f"[TTS] Fallback macOS 'say' failed: {fallback_err}")
-            raise e
