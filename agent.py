@@ -91,6 +91,17 @@ else:
                 delete_idea(idea["id"])
                 st.rerun()
 
+st.sidebar.markdown("---")
+st.sidebar.subheader("⚙️ LLM Configuration")
+model_provider = st.sidebar.selectbox(
+    "Preferred LLM Provider",
+    options=["Nvidia DeepSeek (Cloud)", "Ollama Qwen2.5:3b (Local)"],
+    index=0,
+    help="Nvidia DeepSeek uses a cloud API. Ollama runs locally on port 11434."
+)
+
+use_ollama = (model_provider == "Ollama Qwen2.5:3b (Local)")
+
 # =====================================
 # HEADER
 # =====================================
@@ -153,13 +164,28 @@ def load_nvidia_llm():
 def load_llama_llm():
     return _make_nvidia_llm("meta/llama-3.1-70b-instruct", temperature=0.2)
 
+@st.cache_resource
+def load_ollama_llm(model_name: str = "qwen2.5:3b", temperature: float = 0.7):
+    try:
+        from langchain_ollama import ChatOllama
+        llm = ChatOllama(model=model_name, temperature=temperature)
+        original_invoke = llm.invoke
+        def tracked_invoke(*args, **kwargs):
+            print(f"🤖 [LLM CALL] -> Model: {model_name} (Ollama Local)")
+            return original_invoke(*args, **kwargs)
+        object.__setattr__(llm, "invoke", tracked_invoke)
+        return llm
+    except Exception as e:
+        st.warning(f"⚠️ Failed to initialize Ollama: {e}")
+        return None
+
 try:
     gemini_llm = load_gemini_llm()
     deepseek_flash_llm = load_deepseek_flash_llm()
     nvidia_llm = load_nvidia_llm()
     llama_llm = load_llama_llm()
 except Exception as e:
-    st.error(f"❌ Failed to load models:\n\n{e}")
+    st.error(f"❌ Failed to load Nvidia/Cloud models (Check your .env settings):\n\n{e}")
     st.stop()
 
 
@@ -393,8 +419,23 @@ Keep it between 200-400 words.>
 """
 
                 with st.spinner(f"💡 Generating startup idea (Attempt {orig_attempt})..."):
-                    idea_response = invoke_with_retry(deepseek_flash_llm, idea_prompt)
-                    idea_raw = idea_response.strip()
+                    if use_ollama:
+                        try:
+                            ollama_temp_llm = load_ollama_llm(
+                                model_name="qwen2.5:3b",
+                                temperature=min(0.7 + (orig_attempt - 1) * 0.1, 1.2)
+                            )
+                            if ollama_temp_llm is None:
+                                raise ValueError("Ollama ChatOllama object could not be created.")
+                            idea_response = invoke_with_retry(ollama_temp_llm, idea_prompt)
+                            idea_raw = idea_response.strip()
+                        except Exception as e:
+                            st.warning(f"⚠️ Local Ollama failed to connect: {e}. Falling back to Cloud DeepSeek...")
+                            idea_response = invoke_with_retry(deepseek_flash_llm, idea_prompt)
+                            idea_raw = idea_response.strip()
+                    else:
+                        idea_response = invoke_with_retry(deepseek_flash_llm, idea_prompt)
+                        idea_raw = idea_response.strip()
 
                 # Parse startup name and description
                 if "STARTUP NAME:" in idea_raw:
@@ -439,8 +480,20 @@ Based on this research report, provide a structured, detailed analysis covering:
 
 Ensure your analysis is grounded in the facts and data cited in the research report. Cite specific data points. Keep the analysis under 600 words.
 """
-                analysis_response = invoke_with_retry(gemini_llm, analysis_prompt)
-                analysis_text = analysis_response.strip()
+                if use_ollama:
+                    try:
+                        ollama_anal_llm = load_ollama_llm(model_name="qwen2.5:3b", temperature=0.7)
+                        if ollama_anal_llm is None:
+                            raise ValueError("Ollama ChatOllama object could not be created.")
+                        analysis_response = invoke_with_retry(ollama_anal_llm, analysis_prompt)
+                        analysis_text = analysis_response.strip()
+                    except Exception as e:
+                        st.warning(f"⚠️ Local Ollama failed to connect: {e}. Falling back to Cloud Gemini...")
+                        analysis_response = invoke_with_retry(gemini_llm, analysis_prompt)
+                        analysis_text = analysis_response.strip()
+                else:
+                    analysis_response = invoke_with_retry(gemini_llm, analysis_prompt)
+                    analysis_text = analysis_response.strip()
 
             # --- STAGE 3: Run dialectic debate via run_dialectic() ---
             with st.status(f"🐂🐻⚖️ Running Dialectic Investment Debate for '{idea_name}'...", expanded=True) as status:
