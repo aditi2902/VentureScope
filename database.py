@@ -156,8 +156,8 @@ def save_idea(
         except Exception:
             embedding = None
 
-    ph = _placeholder()
     conn = _get_conn()
+    ph = _placeholder()  # Must be called AFTER _get_conn() sets _USE_SQLITE correctly
     cur = conn.cursor()
     cur.execute(f"""
         INSERT INTO ideas (
@@ -219,8 +219,8 @@ def get_all_ideas():
 
 def delete_idea(idea_id: int):
     """Delete a specific startup idea by ID."""
-    ph = _placeholder()
     conn = _get_conn()
+    ph = _placeholder()  # Must be called AFTER _get_conn() sets _USE_SQLITE correctly
     cur = conn.cursor()
     cur.execute(f"DELETE FROM ideas WHERE id = {ph}", (idea_id,))
     conn.commit()
@@ -241,8 +241,8 @@ def save_generated_pain_point(topic: str, pain_point: str, embedding: bytes = No
         except Exception:
             embedding = None
 
-    ph = _placeholder()
     conn = _get_conn()
+    ph = _placeholder()  # Must be called AFTER _get_conn() sets _USE_SQLITE correctly
     cur = conn.cursor()
     cur.execute(f"""
         INSERT INTO pain_points (topic, pain_point, embedding)

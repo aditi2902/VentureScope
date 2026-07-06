@@ -27,7 +27,7 @@ def _load_fallback_llm():
     object.__setattr__(llm, "invoke", tracked_invoke)
     return llm
 
-def invoke_with_retry(llm, prompt, max_retries=5, initial_delay=10.0) -> str:
+def invoke_with_retry(llm, prompt, max_retries=5, initial_delay=3.0) -> str:
     """
     Invokes the LLM with exponential backoff for transient RPM rate limits (429).
     Falls back to Llama 3.1 70B on quota exhaustion or hard errors.
