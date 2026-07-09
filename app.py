@@ -546,6 +546,31 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
                 if dialectic_result["investable"]:
                     idea_approved = True
 
+                    # ── VC MATCHMAKING ──
+                    _push_event(session_id, "status", {
+                        "stage": "vc_research",
+                        "message": "💰 Finding VCs that invest in this domain..."
+                    })
+                    try:
+                        from vc_research import find_vcs
+                        vc_report = find_vcs(
+                            market=market,
+                            idea_name=idea_name,
+                            idea_content=idea_content,
+                            pain_point=pain_point,
+                            max_results=5,
+                            max_deep_scrape=2,
+                            max_chars=3000,
+                        )
+                    except Exception as vc_err:
+                        vc_report = f"VC research unavailable: {vc_err}"
+
+                    _push_event(session_id, "vc_research", {
+                        "stage": "vc_research_done",
+                        "message": "💰 VC matchmaking complete",
+                        "vc_report": vc_report,
+                    })
+
                     # Save to DB
                     save_idea(
                         topic=market,
@@ -569,6 +594,7 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
                         "idea_name": idea_name,
                         "idea_content": idea_content,
                         "analysis": analysis_text,
+                        "vc_report": vc_report,
                         "dialectic_result": {
                             "investable": dialectic_result["investable"],
                             "verdict": dialectic_result.get("verdict", ""),
