@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Startup Agent</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body data-theme="light">
+    
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container flex-between">
+            <div class="navbar-brand">
+                <span class="logo-icon">🚀</span>
+                <span>AI Startup Agent</span>
+            </div>
+            <div class="navbar-actions">
+                <button id="btn-theme-toggle" class="theme-toggle" title="Toggle Dark Mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button id="btn-open-ideas" class="btn-saved-ideas">
+                    <i class="fas fa-folder-open"></i> Saved Ideas
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="hero">
+        <!-- Floating Neobrutalist Shapes -->
+        <div class="hero-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+            <div class="shape shape-4"></div>
+        </div>
+        <div class="container hero-content">
+            <h1>Turn Market Pain Into <br><span class="highlight">Startup Gold</span> 🚀</h1>
+            <p class="hero-subtitle">Enter a market, let AI discover verified user pain points, and watch it generate, analyze, and debate an investable startup idea in real-time.</p>
+        </div>
+    </header>
+
+    <!-- Wizard Section -->
+    <section class="how-it-works container">
+        
+        <!-- Step Indicators -->
+        <div class="step-indicators" id="step-indicators">
+            <div class="step-indicator active" data-step="1">
+                <div class="step-number">01</div>
+                <span>Market Input</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step-indicator" data-step="2">
+                <div class="step-number">02</div>
+                <span>Pain Point</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="step-indicator" data-step="3">
+                <div class="step-number">03</div>
+                <span>Watch It Work</span>
+            </div>
+        </div>
+
+        <!-- STEP 1: Market & Constraints -->
+        <div class="step-panel active" id="step-1">
+            <div class="input-card">
+                <h3>Define Your Domain</h3>
+                <form id="form-step-1">
+                    <div class="form-group">
+                        <label for="input-market">Market / Domain</label>
+                        <input type="text" id="input-market" class="form-input" placeholder="e.g. Fitness Apps, AI Education, HealthTech" required>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="input-sector">Sector</label>
+                            <select id="input-sector" class="form-select">
+                                <option>B2B SaaS</option>
+                                <option>B2C Mobile App</option>
+                                <option>FinTech</option>
+                                <option>HealthTech</option>
+                                <option>DeepTech</option>
+                                <option>Hardware</option>
+                                <option>E-commerce</option>
+                                <option>Marketplace</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="input-team">Team Size</label>
+                            <select id="input-team" class="form-select">
+                                <option>1-2 (Solo/Co-founders)</option>
+                                <option>3-5 (Small Team)</option>
+                                <option>6-10 (Growing Startup)</option>
+                                <option>10+ (Established)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="input-budget">Available Budget</label>
+                        <select id="input-budget" class="form-select">
+                            <option>&lt;$10k (Lean/Bootstrapped)</option>
+                            <option selected>$10k-$50k (Pre-seed)</option>
+                            <option>$50k-$200k (Seed)</option>
+                            <option>$200k+ (Ventured)</option>
+                        </select>
+                    </div>
+
+                    <div class="text-center mt-32">
+                        <button type="submit" class="btn btn-primary btn-lg" id="btn-find-pain">
+                            <i class="fas fa-search"></i> Find Pain Points
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- STEP 2: Pain Point Selection -->
+        <div class="step-panel" id="step-2">
+            <div class="input-card">
+                <div class="flex-between mb-24">
+                    <h3>Top 3 User Complaints Discovered</h3>
+                    <button class="btn btn-secondary btn-sm" id="btn-back-1">
+                        <i class="fas fa-arrow-left"></i> Back
+                    </button>
+                </div>
+                
+                <p class="mb-24 text-muted">We deep-scraped 9 sources. Select the structural gap you want your startup to solve:</p>
+
+                <div class="pain-point-cards" id="pain-point-cards">
+                    <!-- Injected via JS -->
+                </div>
+
+                <div class="raw-viewer mt-24">
+                    <div class="raw-viewer-header" onclick="this.parentElement.classList.toggle('open')">
+                        <i class="fas fa-code"></i> View Raw Scraped Complaints
+                    </div>
+                    <div class="raw-viewer-body" id="raw-pain-points">
+                        <!-- Injected via JS -->
+                    </div>
+                </div>
+
+                <div class="text-center mt-32">
+                    <button class="btn btn-success btn-lg" id="btn-generate-idea" disabled>
+                        <i class="fas fa-bolt"></i> Generate Startup Idea
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Watch It Work (Live Pipeline) -->
+        <div class="step-panel" id="step-3">
+            
+            <div class="pipeline-section">
+                <!-- Pipeline SVG Spiral Map -->
+                <div class="pipeline-spiral">
+                    <svg class="pipeline-svg" viewBox="0 0 800 400" preserveAspectRatio="xMidYMid meet">
+                        <!-- Background dashed path -->
+                        <path class="path-bg" d="M 100 100 C 250 80, 250 120, 400 100 C 550 80, 700 120, 700 200 C 700 280, 550 320, 400 300 C 250 280, 250 320, 100 300" />
+                        <!-- Foreground solid path for progress -->
+                        <path class="path-progress" id="path-progress" d="M 100 100 C 250 80, 250 120, 400 100 C 550 80, 700 120, 700 200 C 700 280, 550 320, 400 300 C 250 280, 250 320, 100 300" />
+                    </svg>
+
+                    <div class="pipeline-node" id="node-idea" style="left: 12.5%; top: 25%;">
+                        <div class="pipeline-icon">💡</div>
+                        <div class="pipeline-label">Idea Gen</div>
+                    </div>
+                    
+                    <div class="pipeline-node" id="node-judge" style="left: 50%; top: 25%;">
+                        <div class="pipeline-icon">🧑‍⚖️</div>
+                        <div class="pipeline-label">Judge Check</div>
+                    </div>
+                    
+                    <div class="pipeline-node" id="node-analysis" style="left: 87.5%; top: 50%;">
+                        <div class="pipeline-icon">📊</div>
+                        <div class="pipeline-label">Market Analysis</div>
+                    </div>
+                    
+                    <div class="pipeline-node" id="node-debate" style="left: 50%; top: 75%;">
+                        <div class="pipeline-icon">🐂🐻</div>
+                        <div class="pipeline-label">Dialectic Debate</div>
+                    </div>
+                    
+                    <div class="pipeline-node" id="node-verdict" style="left: 12.5%; top: 75%;">
+                        <div class="pipeline-icon">⚖️</div>
+                        <div class="pipeline-label">Final Verdict</div>
+                    </div>
+                </div>
+
+                <!-- Live Log Stream -->
+                <div class="live-log" id="live-log">
+                    <div class="live-log-header">
+                        <div class="live-log-dot"></div> Live Agent Log
+                    </div>
+                    <div id="log-entries">
+                        <!-- Logs injected here -->
+                    </div>
+                </div>
+
+                <!-- Streamed Results Cards -->
+                <div class="result-stream" id="result-stream">
+                    <!-- Intermediate cards (Idea, Research, Analysis, Bull, Bear) injected here -->
+                </div>
+
+                <!-- Final Verdict Dashboard (Hidden until done) -->
+                <div id="final-dashboard" class="hidden mt-40">
+                    <div class="verdict-banner investable" id="verdict-banner">
+                        <div class="verdict-badge investable" id="verdict-badge">✅ INVESTABLE</div>
+                        <div>
+                            <div class="score-ring" id="verdict-score">8.5</div>
+                        </div>
+                        <p class="md-content" id="verdict-explanation" style="text-align: left; background: var(--surface); padding: 20px; border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); margin-top: 20px;"></p>
+                    </div>
+                    
+                    <div class="text-center mt-32 mb-32">
+                        <button class="btn btn-primary btn-lg" id="btn-start-over">
+                            <i class="fas fa-redo"></i> Create Another Idea
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- Confetti Container -->
+    <div class="confetti-container" id="confetti"></div>
+
+    <!-- Saved Ideas Panel -->
+    <div class="ideas-overlay" id="ideas-overlay"></div>
+    <div class="ideas-panel" id="ideas-panel">
+        <div class="ideas-panel-header">
+            <h2><i class="fas fa-folder-open"></i> Saved Ideas</h2>
+            <button class="close-panel-btn" id="btn-close-ideas"><i class="fas fa-times"></i></button>
+        </div>
+        <div id="ideas-list">
+            <!-- Injected via JS -->
+            <div class="empty-state">
+                <div class="empty-state-icon">📂</div>
+                <p>No saved ideas yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JS Logic -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/static/app.js"></script>
+</body>
+</html>

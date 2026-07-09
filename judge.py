@@ -14,19 +14,17 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 
-import gemini_tracker
 
 def _load_judge_llm():
-    """Load a Nvidia NIM DeepSeek V4 Pro model used exclusively for judging."""
-    llm = ChatOpenAI(
-        model="deepseek-ai/deepseek-v4-pro",
-        base_url="https://integrate.api.nvidia.com/v1",
-        api_key=os.environ.get("NVIDIA_API_KEY"),
+    """Load a local Ollama model (Qwen) used exclusively for judging."""
+    from langchain_ollama import ChatOllama
+    llm = ChatOllama(
+        model="qwen3:8b",
         temperature=0.2,
     )
     original_invoke = llm.invoke
     def tracked_invoke(*args, **kwargs):
-        gemini_tracker.track_call()
+        print("🤖 [LLM CALL] -> Model: qwen3:8b (Ollama Judge)")
         return original_invoke(*args, **kwargs)
     object.__setattr__(llm, "invoke", tracked_invoke)
     return llm
