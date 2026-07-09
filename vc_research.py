@@ -189,10 +189,46 @@ def _extract_vc_names(text: str) -> set[str]:
     return found
 
 
+def _mock_crunchbase_search_vc_firms(market: str, limit: int = 5) -> list[dict]:
+    """Fallback search targeting Crunchbase pages via web search when API key is missing."""
+    query = f'site:crunchbase.com/organization "{market}" investor'
+    results = web_search(query, max_results=limit)
+    if not results:
+        query = f'site:crunchbase.com/organization "{market}"'
+        results = web_search(query, max_results=limit)
+        if not results:
+            return []
+        
+    cb_firms = []
+    for r in results:
+        href = r.get("href", "")
+        if "crunchbase.com/organization/" not in href:
+            continue
+            
+        title = r.get("title", "")
+        name = title.split(" - ")[0].split(" | ")[0].replace(" - Crunchbase Investor Profile", "").replace(" - Crunchbase Company Profile", "").strip()
+        if not name or name.lower() in ("crunchbase", "investor profile"):
+            continue
+            
+        desc = r.get("body", "")
+        location = ""
+        loc_match = re.search(r'\b(?:based|headquartered)\s+in\s+([A-Z][a-zA-Z\s,]+?)(?:\.|\s+and|\s+that|\s+with|$)', desc)
+        if loc_match:
+            location = loc_match.group(1).strip()
+            
+        cb_firms.append({
+            "name": name,
+            "description": desc,
+            "website": href,
+            "location": location
+        })
+    return cb_firms
+
+
 def _crunchbase_search_vc_firms(market: str, limit: int = 5) -> list[dict]:
     """Search Crunchbase Basic API for investor organizations in the market."""
     if not CRUNCHBASE_API_KEY:
-        return []
+        return _mock_crunchbase_search_vc_firms(market, limit)
 
     try:
         headers = {
@@ -224,7 +260,7 @@ def _crunchbase_search_vc_firms(market: str, limit: int = 5) -> list[dict]:
         )
         if resp.status_code != 200:
             logger.warning(f"Crunchbase API returned {resp.status_code}: {resp.text[:200]}")
-            return []
+            return _mock_crunchbase_search_vc_firms(market, limit)
 
         data = resp.json()
         results = []
@@ -241,7 +277,7 @@ def _crunchbase_search_vc_firms(market: str, limit: int = 5) -> list[dict]:
 
     except Exception as e:
         logger.warning(f"Crunchbase API search failed: {e}")
-        return []
+        return _mock_crunchbase_search_vc_firms(market, limit)
 
 
 # ---------------------------------------------------------------------------
