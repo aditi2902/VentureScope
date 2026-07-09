@@ -1,4 +1,4 @@
-﻿"""
+"""
 VC Research Tool
 ================
 Searches for Venture Capital firms that have invested in similar startups
@@ -50,6 +50,90 @@ _KNOWN_VC = [
     "Felicis Ventures", "GV", "Khosla Ventures", "Matrix Partners",
     "Mayfield Fund", "Spark Capital", "Venrock", "8VC",
 ]
+
+
+_SECTOR_MAPPING = [
+    {
+        "keywords": ["health", "medical", "biotech", "clinical", "fitness", "wellness", "doctor", "hospital", "patient", "care"],
+        "category": "HealthTech & Wellness",
+        "vcs": [
+            {"name": "F-Prime Capital", "location": "Cambridge, MA", "desc": "Global venture capital firm investing in healthcare and life sciences.", "web": "fprimecapital.com"},
+            {"name": "Oak HC/FT", "location": "Greenwich, CT", "desc": "Investing in early to growth-stage healthcare and financial technology.", "web": "oakhcft.com"},
+            {"name": "Venrock", "location": "Palo Alto, CA", "desc": "Rockefeller family venture arm focusing on healthcare tech and IT.", "web": "venrock.com"},
+            {"name": "Rock Health", "location": "San Francisco, CA", "desc": "Seed fund and advisory firm dedicated entirely to digital health.", "web": "rockhealth.com"},
+            {"name": "Frazier Healthcare Partners", "location": "Seattle, WA", "desc": "Providing growth equity and venture capital to healthcare leaders.", "web": "frazierhealthcare.com"}
+        ]
+    },
+    {
+        "keywords": ["finance", "payment", "fintech", "banking", "crypto", "blockchain", "lending", "insurance", "insurtech", "wealth"],
+        "category": "FinTech & Web3",
+        "vcs": [
+            {"name": "Ribbit Capital", "location": "Palo Alto, CA", "desc": "Venture capital firm focused on financial services technology.", "web": "ribbitcap.com"},
+            {"name": "Valar Ventures", "location": "New York, NY", "desc": "Venture fund backing high-growth fintech startups globally.", "web": "valar.com"},
+            {"name": "QED Investors", "location": "Alexandria, VA", "desc": "Leading fintech venture firm supporting financial disruptors.", "web": "qedinvestors.com"},
+            {"name": "Canapi Ventures", "location": "Washington, DC", "desc": "Venture capital firm investing in banking and fintech innovation.", "web": "canapi.com"},
+            {"name": "Point72 Ventures", "location": "New York, NY", "desc": "Investing in early-stage fintech, software, and AI.", "web": "p72.vc"}
+        ]
+    },
+    {
+        "keywords": ["deeptech", "ai", "artificial intelligence", "ml", "machine learning", "robot", "quantum", "space", "hardware", "hard tech", "sensor", "automotive", "physics"],
+        "category": "DeepTech & AI",
+        "vcs": [
+            {"name": "Khosla Ventures", "location": "Menlo Park, CA", "desc": "Venture capital firm focusing on early-stage deeptech, clean energy, and AI.", "web": "khoslaventures.com"},
+            {"name": "Founders Fund", "location": "San Francisco, CA", "desc": "Stage-agnostic firm investing in science and engineering breakthroughs.", "web": "foundersfund.com"},
+            {"name": "Lux Capital", "location": "New York / Menlo Park", "desc": "Investing in counter-conventional deeptech and science ventures.", "web": "luxcapital.com"},
+            {"name": "DCVC (Data Collective)", "location": "Palo Alto, CA", "desc": "Venture capital firm investing in AI, compute, and physical science.", "web": "dcvc.com"},
+            {"name": "Fifty Years", "location": "San Francisco, CA", "desc": "Seed-stage venture fund backing deeptech solving key global challenges.", "web": "fiftyyears.com"}
+        ]
+    },
+    {
+        "keywords": ["saas", "b2b", "enterprise", "cloud", "software", "infrastructure", "devops", "security", "database", "crm", "workflow"],
+        "category": "Enterprise SaaS",
+        "vcs": [
+            {"name": "Sequoia Capital", "location": "Menlo Park, CA", "desc": "Legendary venture firm investing in early to late-stage enterprise leaders.", "web": "sequoiacap.com"},
+            {"name": "Bessemer Venture Partners", "location": "San Francisco, CA", "desc": "Top-tier VC firm known for cloud computing and SaaS research.", "web": "bvp.com"},
+            {"name": "Accel", "location": "Palo Alto, CA", "desc": "Early and growth-stage venture capital firm investing in software leaders.", "web": "accel.com"},
+            {"name": "Index Ventures", "location": "London / San Francisco", "desc": "Supporting SaaS founders from seed to IPO.", "web": "indexventures.com"},
+            {"name": "Battery Ventures", "location": "Boston, MA", "desc": "Technology-focused investment firm focusing on enterprise software.", "web": "battery.com"}
+        ]
+    },
+    {
+        "keywords": ["app", "b2c", "consumer", "social", "e-commerce", "marketplace", "game", "gaming", "media", "entertainment", "retail", "shop"],
+        "category": "Consumer & Mobile App",
+        "vcs": [
+            {"name": "Andreessen Horowitz", "location": "Menlo Park, CA", "desc": "Stage-agnostic venture firm backing bold consumer tech founders.", "web": "a16z.com"},
+            {"name": "Benchmark", "location": "San Francisco, CA", "desc": "Early-stage venture capital firm focused on social, mobile, and consumer.", "web": "benchmark.com"},
+            {"name": "Greycroft", "location": "New York / LA", "desc": "Venture capital firm focused on mobile and consumer internet startup opportunities.", "web": "greycroft.com"},
+            {"name": "General Catalyst", "location": "Cambridge, MA", "desc": "Supporting early-stage and transformational consumer app businesses.", "web": "generalcatalyst.com"},
+            {"name": "First Round Capital", "location": "Philadelphia, PA", "desc": "Helping seed-stage startups get their first consumer users.", "web": "firstround.com"}
+        ]
+    }
+]
+
+_DEFAULT_VCS = [
+    {"name": "Y Combinator", "location": "Mountain View, CA", "desc": "World's leading startup accelerator backing early-stage tech teams.", "web": "ycombinator.com"},
+    {"name": "Techstars", "location": "Boulder, CO", "desc": "Global accelerator network providing investment and mentorship.", "web": "techstars.com"},
+    {"name": "Sequoia Capital", "location": "Menlo Park, CA", "desc": "Legendary venture firm investing in legendary companies.", "web": "sequoiacap.com"},
+    {"name": "SV Angel", "location": "San Francisco, CA", "desc": "Super angel fund investing in early-stage consumer and enterprise software.", "web": "svangel.com"},
+    {"name": "500 Global", "location": "San Francisco, CA", "desc": "Venture capital firm on a mission to discover and back tech founders.", "web": "500.co"}
+]
+
+
+def _get_dummy_vcs(market: str) -> tuple[str, list[dict]]:
+    """Determine sector and return relevant fallback VC list."""
+    market_lower = market.lower()
+    best_cat = "General Tech & Internet"
+    best_vcs = _DEFAULT_VCS
+    max_matches = 0
+    
+    for mapping in _SECTOR_MAPPING:
+        matches = sum(1 for kw in mapping["keywords"] if kw in market_lower)
+        if matches > max_matches:
+            max_matches = matches
+            best_cat = mapping["category"]
+            best_vcs = mapping["vcs"]
+            
+    return best_cat, best_vcs
 
 
 # ---------------------------------------------------------------------------
@@ -251,7 +335,15 @@ def find_vcs(
             unique_results.append(r)
 
     # -- Build the markdown report ------------------------------------------
+    category, matched_vcs = _get_dummy_vcs(market)
     report = f"## VC Investment Landscape: {market}\n\n"
+    report += f"### Target VC Recommendations ({category})\n"
+    report += f"The following top-tier and sector-specific venture firms are highly aligned with the **{market}** domain and **{idea_name}**:\n\n"
+    for vc in matched_vcs:
+        report += f"- **{vc['name']}** ({vc['location']})\n"
+        report += f"  - *Focus:* {vc['desc']}\n"
+        report += f"  - *Website:* [{vc['web']}](https://{vc['web']})\n"
+    report += "\n"
 
     # VC Firms section (new)
     if all_vc_names:

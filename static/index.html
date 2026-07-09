@@ -24,6 +24,9 @@
                 <button id="btn-open-ideas" class="btn-saved-ideas">
                     <i class="fas fa-folder-open"></i> Saved Ideas
                 </button>
+                <button id="btn-open-vcs" class="btn-saved-ideas" style="background: var(--green); color: var(--text);">
+                    <i class="fas fa-handshake"></i> VC Matchmaker
+                </button>
             </div>
         </div>
     </nav>
@@ -248,6 +251,25 @@
             <div class="empty-state">
                 <div class="empty-state-icon">📂</div>
                 <p>No saved ideas yet.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- VC Matchmaker Panel -->
+    <div class="ideas-overlay" id="vcs-overlay"></div>
+    <div class="ideas-panel" id="vcs-panel">
+        <div class="ideas-panel-header">
+            <h2><i class="fas fa-handshake"></i> VC Matchmaker Dashboard</h2>
+            <button class="close-panel-btn" id="btn-close-vcs"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="padding: 16px 24px; font-size: 0.9rem; color: var(--text-muted); border-bottom: 2px solid var(--border); font-family: var(--font-body);">
+            Compare VC matchmaking metrics, target firm focus, and investor alignment across your approved startup concepts.
+        </div>
+        <div id="vcs-list" style="padding: 24px; overflow-y: auto; max-height: calc(100vh - 150px);">
+            <!-- Injected via JS -->
+            <div class="empty-state">
+                <div class="empty-state-icon">💰</div>
+                <p>No VC matchings found.</p>
             </div>
         </div>
     </div>

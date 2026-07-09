@@ -48,6 +48,13 @@ const ideasOverlay = document.getElementById("ideas-overlay");
 const ideasPanel = document.getElementById("ideas-panel");
 const ideasList = document.getElementById("ideas-list");
 
+// VCs Panel
+const btnOpenVcs = document.getElementById("btn-open-vcs");
+const btnCloseVcs = document.getElementById("btn-close-vcs");
+const vcsOverlay = document.getElementById("vcs-overlay");
+const vcsPanel = document.getElementById("vcs-panel");
+const vcsList = document.getElementById("vcs-list");
+
 // ── Initialization ──
 document.addEventListener("DOMContentLoaded", () => {
     // Theme setup
@@ -65,6 +72,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Ideas Panel
     btnOpenIdeas.addEventListener("click", () => {
+        closeVcs();
         ideasOverlay.classList.add("open");
         ideasPanel.classList.add("open");
         loadSavedIdeas();
@@ -76,6 +84,23 @@ document.addEventListener("DOMContentLoaded", () => {
     };
     btnCloseIdeas.addEventListener("click", closeIdeas);
     ideasOverlay.addEventListener("click", closeIdeas);
+
+    // VCs Panel
+    if (btnOpenVcs) {
+        btnOpenVcs.addEventListener("click", () => {
+            closeIdeas();
+            vcsOverlay.classList.add("open");
+            vcsPanel.classList.add("open");
+            loadVCMatchmaker();
+        });
+    }
+    
+    const closeVcs = () => {
+        vcsOverlay.classList.remove("open");
+        vcsPanel.classList.remove("open");
+    };
+    if (btnCloseVcs) btnCloseVcs.addEventListener("click", closeVcs);
+    if (vcsOverlay) vcsOverlay.addEventListener("click", closeVcs);
 
     // Form Navigation
     formStep1.addEventListener("submit", handleStep1Submit);
@@ -546,5 +571,90 @@ function triggerConfetti() {
         container.appendChild(piece);
         
         setTimeout(() => piece.remove(), 4000);
+    }
+}
+
+async function loadVCMatchmaker() {
+    vcsList.innerHTML = '<div class="text-center mt-32"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+    
+    try {
+        const res = await fetch(`${API_BASE}/ideas`);
+        const ideas = await res.json();
+        
+        // Filter ideas that have a vc_report
+        const matchedIdeas = ideas.filter(idea => idea.vc_report);
+        
+        if (matchedIdeas.length === 0) {
+            vcsList.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-state-icon">💰</div>
+                    <p>No VC matchings generated yet. Run a startup generation pipeline to discover matched VCs.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        vcsList.innerHTML = "";
+        matchedIdeas.forEach(idea => {
+            const card = document.createElement("div");
+            card.className = "idea-card"; // Re-use the existing card styling
+            card.innerHTML = `
+                <div class="idea-card-title flex-between" style="border-bottom: 2px solid var(--border); padding-bottom: 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
+                    <span>🚀 ${idea.idea_name}</span>
+                    <span style="font-size: 0.75rem; background: var(--green); padding: 4px 8px; border-radius: var(--radius-sm); border: 2px solid var(--border); font-weight: bold;">
+                        ${idea.sector || 'General'}
+                    </span>
+                </div>
+                <div class="idea-card-meta mb-16" style="margin-bottom: 16px;">
+                    <strong>Market Focus:</strong> ${idea.topic}
+                </div>
+                <div class="vc-report-container md-content" style="max-height: 350px; overflow-y: auto; background: var(--bg-alt); padding: 16px; border-radius: var(--radius-sm); border: 2px solid var(--border);">
+                    ${marked.parse(idea.vc_report)}
+                </div>
+                <div class="idea-card-actions mt-16" style="display: flex; gap: 8px; margin-top: 16px;">
+                    <button class="btn btn-primary btn-sm btn-pitch-draft"><i class="fas fa-paper-plane"></i> Draft Cold Email</button>
+                </div>
+            `;
+            
+            // Add handler for draft cold email pitch
+            const btnPitch = card.querySelector(".btn-pitch-draft");
+            btnPitch.addEventListener("click", () => {
+                let pitchDiv = card.querySelector(".pitch-draft-area");
+                if (pitchDiv) {
+                    pitchDiv.remove();
+                    btnPitch.innerHTML = '<i class="fas fa-paper-plane"></i> Draft Cold Email';
+                } else {
+                    pitchDiv = document.createElement("div");
+                    pitchDiv.className = "pitch-draft-area mt-12";
+                    pitchDiv.style = "background: var(--surface); padding: 16px; border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 0.85rem; margin-top: 12px;";
+                    
+                    const subject = `Intro: ${idea.idea_name} - Solving ${idea.topic} pain points`;
+                    const body = `Hi,\n\nI saw your investments in the ${idea.topic} sector. We're launching ${idea.idea_name} to solve user pain points like:\n\n"${idea.pain_point || 'general market gaps'}".\n\nGiven your focus, I thought this would align with your portfolio. Let me know if you'd like to see our pitch deck!\n\nBest,\n[Your Name]`;
+                    
+                    pitchDiv.innerHTML = `
+                        <div style="font-weight: bold; margin-bottom: 12px; border-bottom: 2px solid var(--border); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>📧 Cold Pitch Draft</span>
+                            <button class="btn btn-secondary btn-sm btn-copy-pitch" style="padding: 2px 8px; font-size: 0.75rem;"><i class="fas fa-copy"></i> Copy</button>
+                        </div>
+                        <strong>Subject:</strong> ${subject}<br><br>
+                        ${body.replace(/\n/g, "<br>")}
+                    `;
+                    
+                    // Add copy handler
+                    pitchDiv.querySelector(".btn-copy-pitch").addEventListener("click", () => {
+                        navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
+                        alert('Copied draft to clipboard!');
+                    });
+                    
+                    card.appendChild(pitchDiv);
+                    btnPitch.innerHTML = '<i class="fas fa-times"></i> Close Pitch';
+                }
+            });
+            
+            vcsList.appendChild(card);
+        });
+        
+    } catch (e) {
+        vcsList.innerHTML = `<p style="color:red">Failed to load VC matchings: ${e.message}</p>`;
     }
 }
