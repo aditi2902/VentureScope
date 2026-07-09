@@ -294,6 +294,15 @@ function handlePipelineEvents(event) {
         setNodeComplete("verdict");
         renderFinalDashboard(data);
     }
+    else if (event.type === "vc_research") {
+        addStreamCard("vc", "💰 VC Matchmaking Results", data.vc_report);
+        const vcDashboard = document.getElementById("vc-results-container");
+        const vcContent = document.getElementById("vc-results-content");
+        if (vcDashboard && vcContent) {
+            vcDashboard.classList.remove("hidden");
+            vcContent.innerHTML = marked.parse(data.vc_report);
+        }
+    }
     else if (event.type === "error") {
         addLog(`❌ Error: ${data.message}`);
         return true; // close
@@ -326,6 +335,7 @@ function listenToSSE(sessionId, callback) {
     evtSource.addEventListener("analysis_done", handle);
     evtSource.addEventListener("debate_round", handle);
     evtSource.addEventListener("verdict", handle);
+    evtSource.addEventListener("vc_research", handle);
     evtSource.addEventListener("saved", handle);
     evtSource.addEventListener("error", handle);
     evtSource.addEventListener("done", handle);
@@ -452,6 +462,8 @@ function resetApp() {
     state.sessionId = crypto.randomUUID();
     goToStep(1);
     finalDashboard.classList.add("hidden");
+    const vcContainer = document.getElementById("vc-results-container");
+    if (vcContainer) vcContainer.classList.add("hidden");
     resultStream.innerHTML = "";
     logEntries.innerHTML = "";
 }
@@ -491,6 +503,7 @@ async function loadSavedIdeas() {
                     ${marked.parse(idea.idea_description)}
                     <h4 class="mt-16">Verdict</h4>
                     <p>${idea.explanation}</p>
+                    ${idea.vc_report ? `<h4 class="mt-16"><i class="fas fa-handshake"></i> Matched VCs</h4><div style="background: var(--bg-alt); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 8px;">${marked.parse(idea.vc_report)}</div>` : ''}
                 </div>
                 
                 <div class="idea-card-actions">

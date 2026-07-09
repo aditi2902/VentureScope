@@ -11,6 +11,7 @@ Requires DATABASE_URL in .env for Neon:
 
 import os
 import sqlite3
+import datetime
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -77,9 +78,18 @@ def init_db():
                 explanation      TEXT,
                 bull_summary     TEXT,
                 bear_summary     TEXT,
+                vc_report        TEXT,
                 embedding        BLOB
             )
         """)
+        # Schema migration: Check if vc_report column exists in sqlite
+        try:
+            cur.execute("ALTER TABLE ideas ADD COLUMN vc_report TEXT")
+            conn.commit()
+        except sqlite3.OperationalError:
+            # Column already exists
+            pass
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS pain_points (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -108,9 +118,17 @@ def init_db():
                 explanation      TEXT,
                 bull_summary     TEXT,
                 bear_summary     TEXT,
+                vc_report        TEXT,
                 embedding        BYTEA
             )
         """)
+        # Schema migration: Check if vc_report column exists in pg
+        try:
+            cur.execute("ALTER TABLE ideas ADD COLUMN IF NOT EXISTS vc_report TEXT")
+            conn.commit()
+        except Exception:
+            pass
+
         cur.execute("""
             CREATE TABLE IF NOT EXISTS pain_points (
                 id          SERIAL PRIMARY KEY,
@@ -145,6 +163,7 @@ def save_idea(
     team_size: str = "",
     budget: str = "",
     embedding: bytes = None,
+    vc_report: str = "",
 ):
     """Save a judge-approved startup idea with all fields stored in separate columns."""
     # Generate embedding from idea name + description if not provided
@@ -159,18 +178,22 @@ def save_idea(
     conn = _get_conn()
     ph = _placeholder()  # Must be called AFTER _get_conn() sets _USE_SQLITE correctly
     cur = conn.cursor()
+    
+    # Generate timestamp manually to support pre-existing SQLite database schema
+    now_str = datetime.datetime.utcnow().isoformat()
+    
     cur.execute(f"""
         INSERT INTO ideas (
-            topic, sector, team_size, budget, pain_point,
+            timestamp, topic, sector, team_size, budget, pain_point,
             idea_name, idea_description, analysis,
             verdict, score, explanation, bull_summary, bear_summary,
-            embedding
-        ) VALUES ({ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph})
+            vc_report, embedding
+        ) VALUES ({ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph})
     """, (
-        topic, sector, team_size, budget, pain_point,
+        now_str, topic, sector, team_size, budget, pain_point,
         idea_name, idea_description, analysis,
         verdict, score, explanation, bull_summary, bear_summary,
-        embedding,
+        vc_report, embedding,
     ))
     conn.commit()
     cur.close()
@@ -184,7 +207,7 @@ def get_all_ideas():
     cur.execute("""
         SELECT id, timestamp, topic, sector, team_size, budget, pain_point,
                idea_name, idea_description, analysis,
-               verdict, score, explanation, bull_summary, bear_summary, embedding
+               verdict, score, explanation, bull_summary, bear_summary, vc_report, embedding
         FROM ideas
         ORDER BY id DESC
     """)
@@ -211,7 +234,8 @@ def get_all_ideas():
             "explanation":      r[12],
             "bull_summary":     r[13],
             "bear_summary":     r[14],
-            "embedding":        r[15],
+            "vc_report":        r[15],
+            "embedding":        r[16],
         }
         for r in records
     ]
@@ -244,10 +268,14 @@ def save_generated_pain_point(topic: str, pain_point: str, embedding: bytes = No
     conn = _get_conn()
     ph = _placeholder()  # Must be called AFTER _get_conn() sets _USE_SQLITE correctly
     cur = conn.cursor()
+    
+    # Generate timestamp manually to support pre-existing SQLite database schema
+    now_str = datetime.datetime.utcnow().isoformat()
+    
     cur.execute(f"""
-        INSERT INTO pain_points (topic, pain_point, embedding)
-        VALUES ({ph}, {ph}, {ph})
-    """, (topic, pain_point, embedding))
+        INSERT INTO pain_points (timestamp, topic, pain_point, embedding)
+        VALUES ({ph}, {ph}, {ph}, {ph})
+    """, (now_str, topic, pain_point, embedding))
     conn.commit()
     cur.close()
     conn.close()

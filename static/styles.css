@@ -824,6 +824,8 @@ a {
 .stream-card.bear .stream-card-header { background: rgba(255, 82, 82, 0.15); }
 .stream-card.judge { border-left: 6px solid var(--orange); }
 .stream-card.judge .stream-card-header { background: rgba(255, 164, 79, 0.15); }
+.stream-card.vc { border-left: 6px solid var(--green); }
+.stream-card.vc .stream-card-header { background: rgba(123, 241, 120, 0.15); }
 
 /* ═══════════════════════════════════════════════════════
    RESULTS DASHBOARD (Step 3 final)
