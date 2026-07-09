@@ -6,6 +6,7 @@ from database import init_db, save_idea, get_all_ideas, delete_idea
 from judge import judge_idea
 from pain_points import gather_pain_points
 from dialectic import run_dialectic, invoke_with_retry
+from vc_research import find_vcs
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -505,6 +506,14 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
 
     st.success(f"✅ **Dialectic Judge APPROVED** — Idea is investable")
 
+    with st.spinner("💰 Searching for relevant VCs..."):
+        vc_report = find_vcs(
+            market=st.session_state.market,
+            idea_name=idea_name,
+            idea_content=idea_content,
+            pain_point=st.session_state.selected_pain_point,
+        )
+
     st.markdown("---")
 
     st.markdown(f"## 🚀 {idea_name}")
@@ -513,6 +522,10 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
     st.markdown("---")
     st.markdown("## 📊 Comprehensive Analysis")
     st.markdown(analysis_text)
+
+    st.markdown("---")
+    st.markdown("## 💰 VC Investment Landscape")
+    st.markdown(vc_report)
     
     st.markdown("---")
     st.markdown("## ⚖️ Dialectic Investment Debate Summary")
@@ -526,7 +539,7 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
         st.markdown("### 🐻 Bear Case Summary")
         st.markdown(dialectic_result.get('bear_summary', 'No summary available.'))
 
-    st.success("💾 Startup idea, analysis, and debate summary saved to database!")
+    st.success("💾 Startup idea, analysis, dialectic debate, and VC research saved to database!")
     
     if st.button("🔄 Create Another Idea"):
         reset_state()
