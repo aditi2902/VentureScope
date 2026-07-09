@@ -574,6 +574,54 @@ function triggerConfetti() {
     }
 }
 
+function parseVCsFromReport(reportText) {
+    const vcs = [];
+    const lines = reportText.split('\n');
+    let currentVC = null;
+    
+    for (let line of lines) {
+        line = line.trim();
+        // Check for new VC item: starts with - ** or * **
+        const headerMatch = line.match(/^[-*]\s+\*\*([^*]+)\*\*(?:\s+\(([^)]+)\))?/);
+        if (headerMatch) {
+            if (currentVC) {
+                vcs.push(currentVC);
+            }
+            currentVC = {
+                name: headerMatch[1].trim(),
+                location: headerMatch[2] ? headerMatch[2].trim() : "",
+                email: "",
+                website: ""
+            };
+        } else if (currentVC) {
+            // Check for fields under current VC
+            const emailMatch = line.match(/[-*]\s+\*?Email:\*?\s*(\S+@\S+)/i) || line.match(/Found Emails:\s*(\S+@\S+)/i);
+            const webMatch = line.match(/[-*]\s+\*?Website:\*?\s*\[([^\]]+)\]/i) || line.match(/Website:\s*(\S+)/i);
+            
+            if (emailMatch) {
+                // Strip trailing commas, periods or brackets if any
+                currentVC.email = emailMatch[1].trim().replace(/[.,()<>]/g, "");
+            }
+            if (webMatch) {
+                currentVC.website = webMatch[1].trim();
+            }
+        }
+    }
+    if (currentVC) {
+        vcs.push(currentVC);
+    }
+    
+    // Add default fallbacks if parsing fails to find anything
+    if (vcs.length === 0) {
+        return [
+            { name: "Sequoia Capital", email: "info@sequoiacap.com", location: "Menlo Park, CA" },
+            { name: "Andreessen Horowitz", email: "info@a16z.com", location: "Menlo Park, CA" },
+            { name: "Y Combinator", email: "apply@ycombinator.com", location: "Mountain View, CA" }
+        ];
+    }
+    return vcs;
+}
+
 async function loadVCMatchmaker() {
     vcsList.innerHTML = '<div class="text-center mt-32"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
     
@@ -596,8 +644,18 @@ async function loadVCMatchmaker() {
         
         vcsList.innerHTML = "";
         matchedIdeas.forEach(idea => {
+            const vcs = parseVCsFromReport(idea.vc_report);
+            
             const card = document.createElement("div");
             card.className = "idea-card"; // Re-use the existing card styling
+            
+            // Build options for selector
+            let selectorOptions = "";
+            vcs.forEach(vc => {
+                const display = `${vc.name} ${vc.location ? `(${vc.location})` : ''} - ${vc.email || 'No email'}`;
+                selectorOptions += `<option value="${vc.email || 'info@' + (vc.website || 'firm.com')}" data-name="${vc.name}">${display}</option>`;
+            });
+
             card.innerHTML = `
                 <div class="idea-card-title flex-between" style="border-bottom: 2px solid var(--border); padding-bottom: 12px; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;">
                     <span>🚀 ${idea.idea_name}</span>
@@ -608,46 +666,100 @@ async function loadVCMatchmaker() {
                 <div class="idea-card-meta mb-16" style="margin-bottom: 16px;">
                     <strong>Market Focus:</strong> ${idea.topic}
                 </div>
-                <div class="vc-report-container md-content" style="max-height: 350px; overflow-y: auto; background: var(--bg-alt); padding: 16px; border-radius: var(--radius-sm); border: 2px solid var(--border);">
+                <div class="vc-report-container md-content" style="max-height: 300px; overflow-y: auto; background: var(--bg-alt); padding: 16px; border-radius: var(--radius-sm); border: 2px solid var(--border); margin-bottom: 16px;">
                     ${marked.parse(idea.vc_report)}
                 </div>
-                <div class="idea-card-actions mt-16" style="display: flex; gap: 8px; margin-top: 16px;">
-                    <button class="btn btn-primary btn-sm btn-pitch-draft"><i class="fas fa-paper-plane"></i> Draft Cold Email</button>
+                
+                <div class="pitch-setup-section" style="border-top: 2px dashed var(--border); padding-top: 16px;">
+                    <label style="display:block; font-weight:bold; font-size:0.85rem; margin-bottom: 6px; font-family: var(--font-heading);">Select Match VC for Direct Pitch:</label>
+                    <div style="display:flex; gap: 8px;">
+                        <select class="form-select vc-selector" style="flex: 1; padding: 8px 12px; border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); font-size: 0.85rem; background: var(--surface); color: var(--text);">
+                            ${selectorOptions}
+                        </select>
+                        <button class="btn btn-primary btn-sm btn-initiate-pitch" style="white-space: nowrap;"><i class="fas fa-edit"></i> Draft Pitch</button>
+                    </div>
                 </div>
+                <div class="pitch-draft-area-container"></div>
             `;
             
             // Add handler for draft cold email pitch
-            const btnPitch = card.querySelector(".btn-pitch-draft");
-            btnPitch.addEventListener("click", () => {
-                let pitchDiv = card.querySelector(".pitch-draft-area");
+            const btnInitiate = card.querySelector(".btn-initiate-pitch");
+            const vcSelector = card.querySelector(".vc-selector");
+            const draftContainer = card.querySelector(".pitch-draft-area-container");
+            
+            btnInitiate.addEventListener("click", () => {
+                let pitchDiv = draftContainer.querySelector(".pitch-draft-area");
                 if (pitchDiv) {
                     pitchDiv.remove();
-                    btnPitch.innerHTML = '<i class="fas fa-paper-plane"></i> Draft Cold Email';
+                    btnInitiate.innerHTML = '<i class="fas fa-edit"></i> Draft Pitch';
                 } else {
-                    pitchDiv = document.createElement("div");
-                    pitchDiv.className = "pitch-draft-area mt-12";
-                    pitchDiv.style = "background: var(--surface); padding: 16px; border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 0.85rem; margin-top: 12px;";
+                    const selectedOption = vcSelector.options[vcSelector.selectedIndex];
+                    const vcName = selectedOption.getAttribute("data-name");
+                    const vcEmail = vcSelector.value;
                     
-                    const subject = `Intro: ${idea.idea_name} - Solving ${idea.topic} pain points`;
-                    const body = `Hi,\n\nI saw your investments in the ${idea.topic} sector. We're launching ${idea.idea_name} to solve user pain points like:\n\n"${idea.pain_point || 'general market gaps'}".\n\nGiven your focus, I thought this would align with your portfolio. Let me know if you'd like to see our pitch deck!\n\nBest,\n[Your Name]`;
+                    pitchDiv = document.createElement("div");
+                    pitchDiv.className = "pitch-draft-area mt-16";
+                    pitchDiv.style = "background: var(--surface); padding: 16px; border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-body); font-size: 0.85rem; margin-top: 16px;";
+                    
+                    const defaultSubject = `Intro: ${idea.idea_name} - Solving ${idea.topic} pain points`;
+                    const defaultBody = `Hi,\n\nI saw your investments in the ${idea.topic} sector. We're launching ${idea.idea_name} to solve user pain points like:\n\n"${idea.pain_point || 'general market gaps'}".\n\nGiven your focus, I thought this would align with your portfolio. Let me know if you'd like to see our pitch deck!\n\nBest,\n[Your Name]`;
                     
                     pitchDiv.innerHTML = `
-                        <div style="font-weight: bold; margin-bottom: 12px; border-bottom: 2px solid var(--border); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center;">
-                            <span>📧 Cold Pitch Draft</span>
+                        <div style="font-weight: bold; margin-bottom: 12px; border-bottom: 2px solid var(--border); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-family: var(--font-heading);">
+                            <span>📧 Pitch Email to ${vcName}</span>
                             <button class="btn btn-secondary btn-sm btn-copy-pitch" style="padding: 2px 8px; font-size: 0.75rem;"><i class="fas fa-copy"></i> Copy</button>
                         </div>
-                        <strong>Subject:</strong> ${subject}<br><br>
-                        ${body.replace(/\n/g, "<br>")}
+                        
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label style="display:block; font-weight:bold; margin-bottom:4px;">To:</label>
+                            <input type="email" class="form-input pitch-email-to" value="${vcEmail}" style="padding: 6px 10px; font-size: 0.85rem; font-family: var(--font-mono);">
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 12px;">
+                            <label style="display:block; font-weight:bold; margin-bottom:4px;">Subject:</label>
+                            <input type="text" class="form-input pitch-email-subject" value="${defaultSubject}" style="padding: 6px 10px; font-size: 0.85rem;">
+                        </div>
+                        
+                        <div class="form-group" style="margin-bottom: 16px;">
+                            <label style="display:block; font-weight:bold; margin-bottom:4px;">Body:</label>
+                            <textarea class="form-input pitch-email-body" rows="8" style="padding: 10px; font-size: 0.85rem; font-family: var(--font-body); resize: vertical; height: 150px; line-height: 1.5;">${defaultBody}</textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 8px;">
+                            <a href="" target="_blank" class="btn btn-success btn-sm btn-send-email" style="flex: 1; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--green); color: var(--text);">
+                                <i class="fas fa-paper-plane"></i> Send Email Directly
+                            </a>
+                        </div>
                     `;
+                    
+                    const toInput = pitchDiv.querySelector(".pitch-email-to");
+                    const subjectInput = pitchDiv.querySelector(".pitch-email-subject");
+                    const bodyInput = pitchDiv.querySelector(".pitch-email-body");
+                    const sendBtn = pitchDiv.querySelector(".btn-send-email");
+                    
+                    const refreshMailto = () => {
+                        const to = toInput.value;
+                        const subject = subjectInput.value;
+                        const body = bodyInput.value;
+                        sendBtn.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                    };
+                    
+                    // Bind change handlers
+                    toInput.addEventListener("input", refreshMailto);
+                    subjectInput.addEventListener("input", refreshMailto);
+                    bodyInput.addEventListener("input", refreshMailto);
+                    
+                    // Initial load
+                    refreshMailto();
                     
                     // Add copy handler
                     pitchDiv.querySelector(".btn-copy-pitch").addEventListener("click", () => {
-                        navigator.clipboard.writeText(`Subject: ${subject}\n\n${body}`);
-                        alert('Copied draft to clipboard!');
+                        navigator.clipboard.writeText(`To: ${toInput.value}\nSubject: ${subjectInput.value}\n\n${bodyInput.value}`);
+                        alert('Copied draft details to clipboard!');
                     });
                     
-                    card.appendChild(pitchDiv);
-                    btnPitch.innerHTML = '<i class="fas fa-times"></i> Close Pitch';
+                    draftContainer.appendChild(pitchDiv);
+                    btnInitiate.innerHTML = '<i class="fas fa-times"></i> Close Pitch';
                 }
             });
             

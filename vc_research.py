@@ -57,65 +57,65 @@ _SECTOR_MAPPING = [
         "keywords": ["health", "medical", "biotech", "clinical", "fitness", "wellness", "doctor", "hospital", "patient", "care"],
         "category": "HealthTech & Wellness",
         "vcs": [
-            {"name": "F-Prime Capital", "location": "Cambridge, MA", "desc": "Global venture capital firm investing in healthcare and life sciences.", "web": "fprimecapital.com"},
-            {"name": "Oak HC/FT", "location": "Greenwich, CT", "desc": "Investing in early to growth-stage healthcare and financial technology.", "web": "oakhcft.com"},
-            {"name": "Venrock", "location": "Palo Alto, CA", "desc": "Rockefeller family venture arm focusing on healthcare tech and IT.", "web": "venrock.com"},
-            {"name": "Rock Health", "location": "San Francisco, CA", "desc": "Seed fund and advisory firm dedicated entirely to digital health.", "web": "rockhealth.com"},
-            {"name": "Frazier Healthcare Partners", "location": "Seattle, WA", "desc": "Providing growth equity and venture capital to healthcare leaders.", "web": "frazierhealthcare.com"}
+            {"name": "F-Prime Capital", "location": "Cambridge, MA", "desc": "Global venture capital firm investing in healthcare and life sciences.", "web": "fprimecapital.com", "email": "info@fprimecapital.com"},
+            {"name": "Oak HC/FT", "location": "Greenwich, CT", "desc": "Investing in early to growth-stage healthcare and financial technology.", "web": "oakhcft.com", "email": "info@oakhcft.com"},
+            {"name": "Venrock", "location": "Palo Alto, CA", "desc": "Rockefeller family venture arm focusing on healthcare tech and IT.", "web": "venrock.com", "email": "info@venrock.com"},
+            {"name": "Rock Health", "location": "San Francisco, CA", "desc": "Seed fund and advisory firm dedicated entirely to digital health.", "web": "rockhealth.com", "email": "contact@rockhealth.com"},
+            {"name": "Frazier Healthcare Partners", "location": "Seattle, WA", "desc": "Providing growth equity and venture capital to healthcare leaders.", "web": "frazierhealthcare.com", "email": "info@frazierhealthcare.com"}
         ]
     },
     {
         "keywords": ["finance", "payment", "fintech", "banking", "crypto", "blockchain", "lending", "insurance", "insurtech", "wealth"],
         "category": "FinTech & Web3",
         "vcs": [
-            {"name": "Ribbit Capital", "location": "Palo Alto, CA", "desc": "Venture capital firm focused on financial services technology.", "web": "ribbitcap.com"},
-            {"name": "Valar Ventures", "location": "New York, NY", "desc": "Venture fund backing high-growth fintech startups globally.", "web": "valar.com"},
-            {"name": "QED Investors", "location": "Alexandria, VA", "desc": "Leading fintech venture firm supporting financial disruptors.", "web": "qedinvestors.com"},
-            {"name": "Canapi Ventures", "location": "Washington, DC", "desc": "Venture capital firm investing in banking and fintech innovation.", "web": "canapi.com"},
-            {"name": "Point72 Ventures", "location": "New York, NY", "desc": "Investing in early-stage fintech, software, and AI.", "web": "p72.vc"}
+            {"name": "Ribbit Capital", "location": "Palo Alto, CA", "desc": "Venture capital firm focused on financial services technology.", "web": "ribbitcap.com", "email": "info@ribbitcap.com"},
+            {"name": "Valar Ventures", "location": "New York, NY", "desc": "Venture fund backing high-growth fintech startups globally.", "web": "valar.com", "email": "info@valar.com"},
+            {"name": "QED Investors", "location": "Alexandria, VA", "desc": "Leading fintech venture firm supporting financial disruptors.", "web": "qedinvestors.com", "email": "info@qedinvestors.com"},
+            {"name": "Canapi Ventures", "location": "Washington, DC", "desc": "Venture capital firm investing in banking and fintech innovation.", "web": "canapi.com", "email": "info@canapi.com"},
+            {"name": "Point72 Ventures", "location": "New York, NY", "desc": "Investing in early-stage fintech, software, and AI.", "web": "p72.vc", "email": "info@p72.vc"}
         ]
     },
     {
         "keywords": ["deeptech", "ai", "artificial intelligence", "ml", "machine learning", "robot", "quantum", "space", "hardware", "hard tech", "sensor", "automotive", "physics"],
         "category": "DeepTech & AI",
         "vcs": [
-            {"name": "Khosla Ventures", "location": "Menlo Park, CA", "desc": "Venture capital firm focusing on early-stage deeptech, clean energy, and AI.", "web": "khoslaventures.com"},
-            {"name": "Founders Fund", "location": "San Francisco, CA", "desc": "Stage-agnostic firm investing in science and engineering breakthroughs.", "web": "foundersfund.com"},
-            {"name": "Lux Capital", "location": "New York / Menlo Park", "desc": "Investing in counter-conventional deeptech and science ventures.", "web": "luxcapital.com"},
-            {"name": "DCVC (Data Collective)", "location": "Palo Alto, CA", "desc": "Venture capital firm investing in AI, compute, and physical science.", "web": "dcvc.com"},
-            {"name": "Fifty Years", "location": "San Francisco, CA", "desc": "Seed-stage venture fund backing deeptech solving key global challenges.", "web": "fiftyyears.com"}
+            {"name": "Khosla Ventures", "location": "Menlo Park, CA", "desc": "Venture capital firm focusing on early-stage deeptech, clean energy, and AI.", "web": "khoslaventures.com", "email": "info@khoslaventures.com"},
+            {"name": "Founders Fund", "location": "San Francisco, CA", "desc": "Stage-agnostic firm investing in science and engineering breakthroughs.", "web": "foundersfund.com", "email": "info@foundersfund.com"},
+            {"name": "Lux Capital", "location": "New York / Menlo Park", "desc": "Investing in counter-conventional deeptech and science ventures.", "web": "luxcapital.com", "email": "info@luxcapital.com"},
+            {"name": "DCVC (Data Collective)", "location": "Palo Alto, CA", "desc": "Venture capital firm investing in AI, compute, and physical science.", "web": "dcvc.com", "email": "info@dcvc.com"},
+            {"name": "Fifty Years", "location": "San Francisco, CA", "desc": "Seed-stage venture fund backing deeptech solving key global challenges.", "web": "fiftyyears.com", "email": "info@fiftyyears.com"}
         ]
     },
     {
         "keywords": ["saas", "b2b", "enterprise", "cloud", "software", "infrastructure", "devops", "security", "database", "crm", "workflow"],
         "category": "Enterprise SaaS",
         "vcs": [
-            {"name": "Sequoia Capital", "location": "Menlo Park, CA", "desc": "Legendary venture firm investing in early to late-stage enterprise leaders.", "web": "sequoiacap.com"},
-            {"name": "Bessemer Venture Partners", "location": "San Francisco, CA", "desc": "Top-tier VC firm known for cloud computing and SaaS research.", "web": "bvp.com"},
-            {"name": "Accel", "location": "Palo Alto, CA", "desc": "Early and growth-stage venture capital firm investing in software leaders.", "web": "accel.com"},
-            {"name": "Index Ventures", "location": "London / San Francisco", "desc": "Supporting SaaS founders from seed to IPO.", "web": "indexventures.com"},
-            {"name": "Battery Ventures", "location": "Boston, MA", "desc": "Technology-focused investment firm focusing on enterprise software.", "web": "battery.com"}
+            {"name": "Sequoia Capital", "location": "Menlo Park, CA", "desc": "Legendary venture firm investing in early to late-stage enterprise leaders.", "web": "sequoiacap.com", "email": "info@sequoiacap.com"},
+            {"name": "Bessemer Venture Partners", "location": "San Francisco, CA", "desc": "Top-tier VC firm known for cloud computing and SaaS research.", "web": "bvp.com", "email": "info@bvp.com"},
+            {"name": "Accel", "location": "Palo Alto, CA", "desc": "Early and growth-stage venture capital firm investing in software leaders.", "web": "accel.com", "email": "info@accel.com"},
+            {"name": "Index Ventures", "location": "London / San Francisco", "desc": "Supporting SaaS founders from seed to IPO.", "web": "indexventures.com", "email": "info@indexventures.com"},
+            {"name": "Battery Ventures", "location": "Boston, MA", "desc": "Technology-focused investment firm focusing on enterprise software.", "web": "battery.com", "email": "info@battery.com"}
         ]
     },
     {
         "keywords": ["app", "b2c", "consumer", "social", "e-commerce", "marketplace", "game", "gaming", "media", "entertainment", "retail", "shop"],
         "category": "Consumer & Mobile App",
         "vcs": [
-            {"name": "Andreessen Horowitz", "location": "Menlo Park, CA", "desc": "Stage-agnostic venture firm backing bold consumer tech founders.", "web": "a16z.com"},
-            {"name": "Benchmark", "location": "San Francisco, CA", "desc": "Early-stage venture capital firm focused on social, mobile, and consumer.", "web": "benchmark.com"},
-            {"name": "Greycroft", "location": "New York / LA", "desc": "Venture capital firm focused on mobile and consumer internet startup opportunities.", "web": "greycroft.com"},
-            {"name": "General Catalyst", "location": "Cambridge, MA", "desc": "Supporting early-stage and transformational consumer app businesses.", "web": "generalcatalyst.com"},
-            {"name": "First Round Capital", "location": "Philadelphia, PA", "desc": "Helping seed-stage startups get their first consumer users.", "web": "firstround.com"}
+            {"name": "Andreessen Horowitz", "location": "Menlo Park, CA", "desc": "Stage-agnostic venture firm backing bold consumer tech founders.", "web": "a16z.com", "email": "info@a16z.com"},
+            {"name": "Benchmark", "location": "San Francisco, CA", "desc": "Early-stage venture capital firm focused on social, mobile, and consumer.", "web": "benchmark.com", "email": "partners@benchmark.com"},
+            {"name": "Greycroft", "location": "New York / LA", "desc": "Venture capital firm focused on mobile and consumer internet startup opportunities.", "web": "greycroft.com", "email": "info@greycroft.com"},
+            {"name": "General Catalyst", "location": "Cambridge, MA", "desc": "Supporting early-stage and transformational consumer app businesses.", "web": "generalcatalyst.com", "email": "info@generalcatalyst.com"},
+            {"name": "First Round Capital", "location": "Philadelphia, PA", "desc": "Helping seed-stage startups get their first consumer users.", "web": "firstround.com", "email": "info@firstround.com"}
         ]
     }
 ]
 
 _DEFAULT_VCS = [
-    {"name": "Y Combinator", "location": "Mountain View, CA", "desc": "World's leading startup accelerator backing early-stage tech teams.", "web": "ycombinator.com"},
-    {"name": "Techstars", "location": "Boulder, CO", "desc": "Global accelerator network providing investment and mentorship.", "web": "techstars.com"},
-    {"name": "Sequoia Capital", "location": "Menlo Park, CA", "desc": "Legendary venture firm investing in legendary companies.", "web": "sequoiacap.com"},
-    {"name": "SV Angel", "location": "San Francisco, CA", "desc": "Super angel fund investing in early-stage consumer and enterprise software.", "web": "svangel.com"},
-    {"name": "500 Global", "location": "San Francisco, CA", "desc": "Venture capital firm on a mission to discover and back tech founders.", "web": "500.co"}
+    {"name": "Y Combinator", "location": "Mountain View, CA", "desc": "World's leading startup accelerator backing early-stage tech teams.", "web": "ycombinator.com", "email": "apply@ycombinator.com"},
+    {"name": "Techstars", "location": "Boulder, CO", "desc": "Global accelerator network providing investment and mentorship.", "web": "techstars.com", "email": "info@techstars.com"},
+    {"name": "Sequoia Capital", "location": "Menlo Park, CA", "desc": "Legendary venture firm investing in legendary companies.", "web": "sequoiacap.com", "email": "info@sequoiacap.com"},
+    {"name": "SV Angel", "location": "San Francisco, CA", "desc": "Super angel fund investing in early-stage consumer and enterprise software.", "web": "svangel.com", "email": "info@svangel.com"},
+    {"name": "500 Global", "location": "San Francisco, CA", "desc": "Venture capital firm on a mission to discover and back tech founders.", "web": "500.co", "email": "info@500.co"}
 ]
 
 
@@ -189,46 +189,27 @@ def _extract_vc_names(text: str) -> set[str]:
     return found
 
 
-def _mock_crunchbase_search_vc_firms(market: str, limit: int = 5) -> list[dict]:
-    """Fallback search targeting Crunchbase pages via web search when API key is missing."""
-    query = f'site:crunchbase.com/organization "{market}" investor'
-    results = web_search(query, max_results=limit)
-    if not results:
-        query = f'site:crunchbase.com/organization "{market}"'
-        results = web_search(query, max_results=limit)
-        if not results:
-            return []
-        
-    cb_firms = []
-    for r in results:
-        href = r.get("href", "")
-        if "crunchbase.com/organization/" not in href:
-            continue
-            
-        title = r.get("title", "")
-        name = title.split(" - ")[0].split(" | ")[0].replace(" - Crunchbase Investor Profile", "").replace(" - Crunchbase Company Profile", "").strip()
-        if not name or name.lower() in ("crunchbase", "investor profile"):
-            continue
-            
-        desc = r.get("body", "")
-        location = ""
-        loc_match = re.search(r'\b(?:based|headquartered)\s+in\s+([A-Z][a-zA-Z\s,]+?)(?:\.|\s+and|\s+that|\s+with|$)', desc)
-        if loc_match:
-            location = loc_match.group(1).strip()
-            
-        cb_firms.append({
-            "name": name,
-            "description": desc,
-            "website": href,
-            "location": location
-        })
-    return cb_firms
+_EMAIL_REGEX = re.compile(r'\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}\b')
+
+def _extract_emails(text: str) -> list[str]:
+    """Find and return unique email addresses in a text block."""
+    if not text:
+        return []
+    # Avoid picking up common generic/image emails
+    exclusions = {"png", "jpg", "jpeg", "gif", "svg", "webp", "example.com", "yourdomain.com"}
+    raw_emails = _EMAIL_REGEX.findall(text)
+    valid_emails = []
+    for email in raw_emails:
+        domain = email.split("@")[-1].lower()
+        if not any(ex in domain for ex in exclusions):
+            valid_emails.append(email)
+    return list(set(valid_emails))
 
 
 def _crunchbase_search_vc_firms(market: str, limit: int = 5) -> list[dict]:
     """Search Crunchbase Basic API for investor organizations in the market."""
     if not CRUNCHBASE_API_KEY:
-        return _mock_crunchbase_search_vc_firms(market, limit)
+        return []
 
     try:
         headers = {
@@ -260,7 +241,7 @@ def _crunchbase_search_vc_firms(market: str, limit: int = 5) -> list[dict]:
         )
         if resp.status_code != 200:
             logger.warning(f"Crunchbase API returned {resp.status_code}: {resp.text[:200]}")
-            return _mock_crunchbase_search_vc_firms(market, limit)
+            return []
 
         data = resp.json()
         results = []
@@ -277,7 +258,7 @@ def _crunchbase_search_vc_firms(market: str, limit: int = 5) -> list[dict]:
 
     except Exception as e:
         logger.warning(f"Crunchbase API search failed: {e}")
-        return _mock_crunchbase_search_vc_firms(market, limit)
+        return []
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +349,11 @@ def find_vcs(
         title = r.get("title", "")
         if title and title not in seen_titles:
             seen_titles.add(title)
+            # Scan combined fields for email addresses
+            text_to_scan = f"{r.get('title', '')} {r.get('body', '')} {r.get('page_text', '')}"
+            emails = _extract_emails(text_to_scan)
+            if emails:
+                r["emails"] = emails
             unique_results.append(r)
 
     # -- Build the markdown report ------------------------------------------
@@ -379,6 +365,8 @@ def find_vcs(
         report += f"- **{vc['name']}** ({vc['location']})\n"
         report += f"  - *Focus:* {vc['desc']}\n"
         report += f"  - *Website:* [{vc['web']}](https://{vc['web']})\n"
+        if "email" in vc:
+            report += f"  - *Email:* {vc['email']}\n"
     report += "\n"
 
     # VC Firms section (new)
@@ -445,6 +433,7 @@ def find_vcs(
             body = r.get("body", "")
             href = r.get("href", "")
             page_text = r.get("page_text", "")
+            emails = r.get("emails", [])
 
             report += f"{i}. **[{title}]({href})**\n"
             if body:
@@ -452,6 +441,8 @@ def find_vcs(
             if page_text:
                 excerpt = page_text[:300]
                 report += f"   > {excerpt}\n"
+            if emails:
+                report += f"   *Email:* {', '.join(emails)}\n"
             report += "\n"
     else:
         report += "No VC-related results found via web search.\n"
