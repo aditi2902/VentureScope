@@ -1296,3 +1296,368 @@ a {
 .flex-center { display: flex; align-items: center; justify-content: center; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .hidden { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════
+   PITCH MY IDEA PANEL
+   ═══════════════════════════════════════════════════════ */
+
+.pitch-panel {
+  width: min(560px, 96vw);
+}
+
+/* ── Pitch Step Nav ── */
+.pitch-step-nav {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  gap: 0;
+  border-bottom: var(--border-w) solid var(--border);
+  background: var(--bg-alt);
+}
+
+.pitch-step-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.pitch-step-tab.active {
+  background: var(--orange);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+
+.pitch-step-num {
+  font-size: 0.75rem;
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.pitch-step-connector {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  opacity: 0.3;
+  min-width: 20px;
+}
+
+/* ── Pitch Step Body ── */
+.pitch-step-body {
+  padding: 20px 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 180px);
+}
+
+/* ── Pitch Form Sections ── */
+.pitch-form-section {
+  background: var(--bg-alt);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.pitch-form-section-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+}
+
+.pitch-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 500px) {
+  .pitch-form-row { grid-template-columns: 1fr; }
+}
+
+.pitch-cta {
+  padding: 0 0 8px;
+}
+
+/* ── Pitch Live Log ── */
+.pitch-live-log {
+  background: var(--bg-alt);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  max-height: 160px;
+  overflow-y: auto;
+  margin-bottom: 24px;
+  font-size: 0.8rem;
+}
+
+/* ── Readiness Gauge ── */
+.readiness-gauge-container {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px 28px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 24px;
+}
+
+.readiness-gauge-wrap {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  flex-shrink: 0;
+}
+
+.readiness-svg {
+  width: 140px;
+  height: 140px;
+}
+
+.gauge-track {
+  fill: none;
+  stroke: var(--bg-alt);
+  stroke-width: 16;
+}
+
+.gauge-fill {
+  fill: none;
+  stroke: var(--orange);
+  stroke-width: 16;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.gauge-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.gauge-score {
+  font-family: var(--font-heading);
+  font-size: 2.2rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text);
+}
+
+.gauge-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.readiness-label-block {
+  flex: 1;
+}
+
+.readiness-title {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+
+.readiness-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+/* Score colors */
+.gauge-fill.score-high   { stroke: var(--green); }
+.gauge-fill.score-mid    { stroke: var(--orange); }
+.gauge-fill.score-low    { stroke: var(--red); }
+.readiness-title.score-high { color: var(--green); }
+.readiness-title.score-mid  { color: var(--orange); }
+.readiness-title.score-low  { color: var(--red); }
+
+/* ── Dimension Cards ── */
+.dimension-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 480px) {
+  .dimension-grid { grid-template-columns: 1fr; }
+}
+
+.dimension-card {
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+  animation: cardSlideIn var(--transition-slow) ease-out;
+}
+
+.dimension-card:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-md);
+}
+
+.dimension-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.dimension-name {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--text);
+  flex: 1;
+}
+
+.dimension-score-badge {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+.dimension-score-badge.high { background: var(--green); }
+.dimension-score-badge.mid  { background: var(--yellow); }
+.dimension-score-badge.low  { background: var(--red); color: #fff; }
+
+.dimension-bar-track {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-alt);
+  border-radius: 3px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.dimension-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+  width: 0%;
+}
+
+.dimension-bar-fill.high { background: var(--green); }
+.dimension-bar-fill.mid  { background: var(--orange); }
+.dimension-bar-fill.low  { background: var(--red); }
+
+.dimension-feedback {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Suggestions Block ── */
+.suggestions-block {
+  background: var(--surface);
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 24px;
+}
+
+.suggestions-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border);
+}
+
+.suggestion-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0,0,0,0.06);
+  animation: fadeIn var(--transition-fast);
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.suggestion-bullet {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+  background: var(--orange);
+  font-weight: 700;
+  font-family: var(--font-heading);
+}
+
+.suggestion-text {
+  font-size: 0.85rem;
+  line-height: 1.55;
+  color: var(--text);
+}
+
+.suggestion-dim-label {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-bottom: 2px;
+}
+
+/* ── Pitch VC Section ── */
+.pitch-vc-section {
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: var(--shadow-sm);
+}
+
+.pitch-vc-section .suggestions-title {
+  background: var(--bg-alt);
+  padding: 14px 20px;
+  margin-bottom: 0;
+  border-bottom: var(--border-w) solid var(--border);
+  border-radius: 0;
+}

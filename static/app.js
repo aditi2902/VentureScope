@@ -770,3 +770,309 @@ async function loadVCMatchmaker() {
         vcsList.innerHTML = `<p style="color:red">Failed to load VC matchings: ${e.message}</p>`;
     }
 }
+
+// ═══════════════════════════════════════════════════════
+// PITCH MY IDEA — Panel, Form, SSE, UI Rendering
+// ═══════════════════════════════════════════════════════
+
+const btnOpenPitch  = document.getElementById("btn-open-pitch");
+const btnClosePitch = document.getElementById("btn-close-pitch");
+const pitchOverlay  = document.getElementById("pitch-overlay");
+const pitchPanel    = document.getElementById("pitch-panel");
+
+const pitchStep1    = document.getElementById("pitch-step-1");
+const pitchStep2    = document.getElementById("pitch-step-2");
+const pitchTab1     = document.getElementById("pitch-tab-1");
+const pitchTab2     = document.getElementById("pitch-tab-2");
+
+const pitchForm     = document.getElementById("pitch-form");
+const btnPitchRedo  = document.getElementById("btn-pitch-redo");
+
+const pitchLogEntries       = document.getElementById("pitch-log-entries");
+const readinessGaugeSection = document.getElementById("readiness-gauge-section");
+const gaugeFill             = document.getElementById("gauge-fill");
+const gaugeScoreText        = document.getElementById("gauge-score-text");
+const readinessLabel        = document.getElementById("readiness-label");
+const dimensionGrid         = document.getElementById("dimension-grid");
+const suggestionsBlock      = document.getElementById("suggestions-block");
+const suggestionsList       = document.getElementById("suggestions-list");
+const pitchVcSection        = document.getElementById("pitch-vc-section");
+const pitchVcContent        = document.getElementById("pitch-vc-content");
+const pitchRedo             = document.getElementById("pitch-redo");
+
+let pitchSessionId = crypto.randomUUID();
+
+// ── Open / Close ──
+function closePitchPanel() {
+    pitchOverlay.classList.remove("open");
+    pitchPanel.classList.remove("open");
+}
+
+function openPitchPanel() {
+    // Close other panels first
+    document.getElementById("ideas-overlay").classList.remove("open");
+    document.getElementById("ideas-panel").classList.remove("open");
+    document.getElementById("vcs-overlay").classList.remove("open");
+    document.getElementById("vcs-panel").classList.remove("open");
+    pitchOverlay.classList.add("open");
+    pitchPanel.classList.add("open");
+}
+
+if (btnOpenPitch)  btnOpenPitch.addEventListener("click", openPitchPanel);
+if (btnClosePitch) btnClosePitch.addEventListener("click", closePitchPanel);
+if (pitchOverlay)  pitchOverlay.addEventListener("click", closePitchPanel);
+
+// ── Step navigation ──
+function showPitchStep(num) {
+    if (num === 1) {
+        pitchStep1.classList.remove("hidden");
+        pitchStep2.classList.add("hidden");
+        pitchTab1.classList.add("active");
+        pitchTab2.classList.remove("active");
+    } else {
+        pitchStep1.classList.add("hidden");
+        pitchStep2.classList.remove("hidden");
+        pitchTab1.classList.remove("active");
+        pitchTab2.classList.add("active");
+    }
+}
+
+// ── Form submit ──
+if (pitchForm) {
+    pitchForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        pitchSessionId = crypto.randomUUID();
+
+        const payload = {
+            session_id:       pitchSessionId,
+            startup_name:     document.getElementById("pitch-name").value.trim(),
+            domain:           document.getElementById("pitch-domain").value.trim(),
+            sector:           document.getElementById("pitch-sector").value,
+            stage:            document.getElementById("pitch-stage").value,
+            monthly_revenue:  document.getElementById("pitch-monthly-revenue").value.trim(),
+            annual_turnover:  document.getElementById("pitch-annual-turnover").value.trim(),
+            team_size:        document.getElementById("pitch-team-size").value,
+            description:      document.getElementById("pitch-description").value.trim(),
+            problem_solved:   document.getElementById("pitch-problem").value.trim(),
+            target_customer:  document.getElementById("pitch-customer").value.trim(),
+            competitors:      document.getElementById("pitch-competitors").value.trim(),
+            funding_sought:   document.getElementById("pitch-funding").value,
+        };
+
+        if (!payload.startup_name || !payload.domain || !payload.description || !payload.problem_solved) {
+            alert("Please fill in all required fields (marked with *).");
+            return;
+        }
+
+        // Reset step 2 UI
+        pitchLogEntries.innerHTML = "";
+        readinessGaugeSection.classList.add("hidden");
+        dimensionGrid.classList.add("hidden");
+        dimensionGrid.innerHTML = "";
+        suggestionsBlock.classList.add("hidden");
+        suggestionsList.innerHTML = "";
+        pitchVcSection.classList.add("hidden");
+        pitchVcContent.innerHTML = "";
+        pitchRedo.classList.add("hidden");
+
+        // Reset gauge
+        gaugeFill.style.strokeDashoffset = "502.65";
+        gaugeFill.className = "gauge-fill";
+        gaugeScoreText.textContent = "0.0";
+        readinessLabel.textContent = "Calculating...";
+        readinessLabel.className = "readiness-title";
+
+        showPitchStep(2);
+
+        const submitBtn = document.getElementById("btn-pitch-submit");
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Evaluating...';
+
+        try {
+            const res = await fetch(`${API_BASE}/evaluate-idea`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                listenToPitchSSE(pitchSessionId);
+            } else {
+                throw new Error("Failed to start evaluation");
+            }
+        } catch (err) {
+            addPitchLog(`❌ Error: ${err.message}`);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-magic"></i> Evaluate My Startup';
+        }
+    });
+}
+
+if (btnPitchRedo) {
+    btnPitchRedo.addEventListener("click", () => {
+        showPitchStep(1);
+        const submitBtn = document.getElementById("btn-pitch-submit");
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-magic"></i> Evaluate My Startup';
+        }
+    });
+}
+
+// ── SSE for pitch ──
+function listenToPitchSSE(sessionId) {
+    const evtSource = new EventSource(`${API_BASE}/stream/${sessionId}`);
+
+    const events = ["status", "eval_result", "vc_research", "saved", "error", "done"];
+    events.forEach(evt => {
+        evtSource.addEventListener(evt, (e) => {
+            const shouldClose = handlePitchEvent(e);
+            if (shouldClose) evtSource.close();
+        });
+    });
+
+    evtSource.onerror = () => evtSource.close();
+}
+
+function handlePitchEvent(event) {
+    const data = JSON.parse(event.data);
+
+    if (event.type === "status") {
+        addPitchLog(data.message);
+    }
+    else if (event.type === "eval_result") {
+        addPitchLog(data.message);
+        renderReadinessGauge(data.overall_score);
+        renderDimensionCards(data.dimensions);
+        renderSuggestions(data.dimensions);
+    }
+    else if (event.type === "vc_research") {
+        addPitchLog(data.message);
+        pitchVcSection.classList.remove("hidden");
+        pitchVcContent.innerHTML = marked.parse(data.vc_report || "No VC data.");
+    }
+    else if (event.type === "saved") {
+        addPitchLog("💾 Evaluation saved to database.");
+        pitchRedo.classList.remove("hidden");
+    }
+    else if (event.type === "error") {
+        addPitchLog(`❌ Error: ${data.message}`);
+        pitchRedo.classList.remove("hidden");
+        return true;
+    }
+    else if (event.type === "done") {
+        pitchRedo.classList.remove("hidden");
+        return true;
+    }
+    return false;
+}
+
+// ── UI helpers ──
+function addPitchLog(msg) {
+    const el = document.createElement("div");
+    el.className = "log-entry";
+    el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    pitchLogEntries.appendChild(el);
+    pitchLogEntries.parentElement.scrollTop = pitchLogEntries.parentElement.scrollHeight;
+}
+
+function getScoreClass(score) {
+    if (score >= 7) return "high";
+    if (score >= 4.5) return "mid";
+    return "low";
+}
+
+function getReadinessLabel(score) {
+    if (score >= 8.5) return "🚀 Investor-Ready!";
+    if (score >= 7)   return "✅ Strong Startup";
+    if (score >= 5.5) return "📈 Promising, Needs Work";
+    if (score >= 4)   return "⚠️ Early Stage";
+    return "🛠 Needs Major Work";
+}
+
+function renderReadinessGauge(score) {
+    readinessGaugeSection.classList.remove("hidden");
+
+    const circumference = 502.65;
+    const fraction = Math.min(Math.max(score / 10, 0), 1);
+    const offset = circumference - fraction * circumference;
+
+    const cls = getScoreClass(score);
+    gaugeFill.className = `gauge-fill score-${cls}`;
+    readinessLabel.className = `readiness-title score-${cls}`;
+
+    // Animate number counter
+    let current = 0;
+    const target = score;
+    const steps = 40;
+    const increment = target / steps;
+    const interval = setInterval(() => {
+        current = Math.min(current + increment, target);
+        gaugeScoreText.textContent = current.toFixed(1);
+        if (current >= target) clearInterval(interval);
+    }, 30);
+
+    // Animate SVG ring
+    setTimeout(() => {
+        gaugeFill.style.strokeDashoffset = offset;
+    }, 50);
+
+    readinessLabel.textContent = getReadinessLabel(score);
+}
+
+function renderDimensionCards(dimensions) {
+    if (!dimensions || !dimensions.length) return;
+    dimensionGrid.classList.remove("hidden");
+    dimensionGrid.innerHTML = "";
+
+    dimensions.forEach(dim => {
+        const cls = getScoreClass(dim.score);
+        const barPct = (dim.score / 10 * 100).toFixed(1);
+
+        const card = document.createElement("div");
+        card.className = "dimension-card";
+        card.innerHTML = `
+            <div class="dimension-card-header">
+                <span class="dimension-name">${dim.name}</span>
+                <span class="dimension-score-badge ${cls}">${dim.score.toFixed(1)}</span>
+            </div>
+            <div class="dimension-bar-track">
+                <div class="dimension-bar-fill ${cls}" style="width:0%" data-target="${barPct}"></div>
+            </div>
+            <div class="dimension-feedback">${dim.feedback || ""}</div>
+        `;
+        dimensionGrid.appendChild(card);
+
+        // Animate bar after render
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                const fill = card.querySelector(".dimension-bar-fill");
+                if (fill) fill.style.width = `${barPct}%`;
+            }, 80);
+        });
+    });
+}
+
+function renderSuggestions(dimensions) {
+    const hasSuggestions = dimensions.some(d => d.suggestion && d.suggestion.trim());
+    if (!hasSuggestions) return;
+
+    suggestionsBlock.classList.remove("hidden");
+    suggestionsList.innerHTML = "";
+
+    let idx = 1;
+    dimensions.forEach(dim => {
+        if (!dim.suggestion || !dim.suggestion.trim()) return;
+        const item = document.createElement("div");
+        item.className = "suggestion-item";
+        item.innerHTML = `
+            <div class="suggestion-bullet">${idx}</div>
+            <div>
+                <div class="suggestion-dim-label">${dim.name}</div>
+                <div class="suggestion-text">${dim.suggestion}</div>
+            </div>
+        `;
+        suggestionsList.appendChild(item);
+        idx++;
+    });
+}

@@ -23,7 +23,7 @@ app = Flask(__name__, static_folder="static", static_url_path="/static")
 CORS(app)
 
 # ── Database Init ──
-from database import init_db, save_idea, get_all_ideas, delete_idea
+from database import init_db, save_idea, get_all_ideas, delete_idea, save_user_idea, get_all_user_ideas, delete_user_idea
 
 _db_error = None
 try:
@@ -586,6 +586,7 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
                         sector=sector,
                         team_size=team_size,
                         budget=budget,
+                        vc_report=vc_report,
                     )
 
                     _push_event(session_id, "saved", {
@@ -618,6 +619,260 @@ Ensure your analysis is grounded in the facts and data cited in the research rep
             import traceback
             traceback.print_exc()
             _push_event(session_id, "error", {"message": f"Pipeline error: {str(e)}"})
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    return jsonify({"session_id": session_id, "status": "started"})
+
+
+@app.route("/api/user-ideas", methods=["GET"])
+def api_get_user_ideas():
+    """Return all user-submitted idea evaluations."""
+    ideas = get_all_user_ideas()
+    return jsonify(ideas)
+
+
+@app.route("/api/user-ideas/<int:idea_id>", methods=["DELETE"])
+def api_delete_user_idea(idea_id):
+    delete_user_idea(idea_id)
+    return jsonify({"status": "deleted", "id": idea_id})
+
+
+@app.route("/api/evaluate-idea", methods=["POST"])
+def api_evaluate_idea():
+    """
+    Evaluate a user-submitted startup idea.
+    Streams intermediate results via SSE.
+    Body: { session_id, startup_name, domain, sector, stage,
+            monthly_revenue, annual_turnover, team_size,
+            description, problem_solved, target_customer,
+            competitors, funding_sought }
+    """
+    body = request.json or {}
+    session_id = body.get("session_id", str(uuid.uuid4()))
+    startup_name   = body.get("startup_name", "").strip()
+    domain         = body.get("domain", "").strip()
+    sector         = body.get("sector", "")
+    stage          = body.get("stage", "")
+    monthly_revenue = body.get("monthly_revenue", "")
+    annual_turnover = body.get("annual_turnover", "")
+    team_size      = body.get("team_size", "")
+    description    = body.get("description", "").strip()
+    problem_solved = body.get("problem_solved", "").strip()
+    target_customer = body.get("target_customer", "").strip()
+    competitors    = body.get("competitors", "").strip()
+    funding_sought = body.get("funding_sought", "")
+
+    if not startup_name or not domain:
+        return jsonify({"error": "startup_name and domain are required"}), 400
+
+    def run():
+        try:
+            from dialectic import invoke_with_retry
+
+            # ── Stage 1: Build evaluation prompt ──
+            _push_event(session_id, "status", {
+                "stage": "evaluating",
+                "message": "🔍 Analyzing your startup across 7 investor dimensions..."
+            })
+
+            eval_prompt = f"""/no_think
+You are a senior venture capitalist with 20+ years of experience evaluating startups.
+Evaluate the following startup idea submitted by a founder.
+
+## Startup Details
+- Name: {startup_name}
+- Domain/Market: {domain}
+- Sector: {sector}
+- Stage: {stage}
+- Monthly Revenue: {monthly_revenue or 'Not disclosed'}
+- Annual Turnover: {annual_turnover or 'Not disclosed'}
+- Team Size: {team_size}
+- Description: {description}
+- Problem Being Solved: {problem_solved}
+- Target Customer: {target_customer}
+- Key Competitors: {competitors or 'Not mentioned'}
+- Funding Sought: {funding_sought or 'Not mentioned'}
+
+## Your Task
+Score this startup across EXACTLY these 7 dimensions (score each 0.0–10.0):
+1. **Problem Clarity** – How well-defined and validated is the problem?
+2. **Market Opportunity** – Size, growth, and timing of the market
+3. **Revenue Model** – Clarity, sustainability, and scalability of monetization
+4. **Team Strength** – Relevance of team size and implied execution capability
+5. **Traction & Validation** – Evidence of market validation (revenue, users, pilots)
+6. **Competitive Moat** – Differentiation vs. existing competitors
+7. **Investor Readiness** – How pitch-ready is this startup right now?
+
+For each dimension:
+- Give a numeric score (0.0–10.0 with one decimal)
+- Write 1–2 sentences of honest feedback
+- If score < 7, give 1 concrete, actionable improvement suggestion
+
+Also compute an OVERALL READINESS SCORE = weighted average:
+  Problem(20%) + Market(20%) + Revenue(15%) + Team(10%) + Traction(20%) + Moat(10%) + Readiness(5%)
+
+## Output Format (MUST follow exactly)
+OVERALL_SCORE: <number>
+---
+DIMENSION: Problem Clarity
+SCORE: <number>
+FEEDBACK: <1-2 sentences>
+SUGGESTION: <actionable suggestion or NONE if score >= 7>
+---
+DIMENSION: Market Opportunity
+SCORE: <number>
+FEEDBACK: <1-2 sentences>
+SUGGESTION: <actionable suggestion or NONE if score >= 7>
+---
+DIMENSION: Revenue Model
+SCORE: <number>
+FEEDBACK: <1-2 sentences>
+SUGGESTION: <actionable suggestion or NONE if score >= 7>
+---
+DIMENSION: Team Strength
+SCORE: <number>
+FEEDBACK: <1-2 sentences>
+SUGGESTION: <actionable suggestion or NONE if score >= 7>
+---
+DIMENSION: Traction & Validation
+SCORE: <number>
+FEEDBACK: <1-2 sentences>
+SUGGESTION: <actionable suggestion or NONE if score >= 7>
+---
+DIMENSION: Competitive Moat
+SCORE: <number>
+FEEDBACK: <1-2 sentences>
+SUGGESTION: <actionable suggestion or NONE if score >= 7>
+---
+DIMENSION: Investor Readiness
+SCORE: <number>
+FEEDBACK: <1-2 sentences>
+SUGGESTION: <actionable suggestion or NONE if score >= 7>
+"""
+
+            raw_eval = invoke_with_retry(llama_llm, eval_prompt).strip()
+
+            # ── Parse evaluation ──
+            overall_score = 5.0
+            dimensions = []
+            try:
+                lines = raw_eval.split("\n")
+                # Extract overall score
+                for line in lines:
+                    if line.strip().startswith("OVERALL_SCORE:"):
+                        try:
+                            overall_score = float(line.split(":", 1)[1].strip())
+                        except Exception:
+                            pass
+                        break
+
+                # Parse dimension blocks
+                blocks = raw_eval.split("---")
+                for block in blocks:
+                    block = block.strip()
+                    if not block or "OVERALL_SCORE" in block:
+                        continue
+                    dim = {"name": "", "score": 5.0, "feedback": "", "suggestion": ""}
+                    for line in block.split("\n"):
+                        line = line.strip()
+                        if line.startswith("DIMENSION:"):
+                            dim["name"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("SCORE:"):
+                            try:
+                                dim["score"] = float(line.split(":", 1)[1].strip())
+                            except Exception:
+                                dim["score"] = 5.0
+                        elif line.startswith("FEEDBACK:"):
+                            dim["feedback"] = line.split(":", 1)[1].strip()
+                        elif line.startswith("SUGGESTION:"):
+                            sug = line.split(":", 1)[1].strip()
+                            dim["suggestion"] = "" if sug.upper() == "NONE" else sug
+                    if dim["name"]:
+                        dimensions.append(dim)
+            except Exception:
+                pass
+
+            # Fallback if parsing totally fails
+            if not dimensions:
+                dimensions = [
+                    {"name": "Problem Clarity", "score": 5.0, "feedback": "Could not parse evaluation.", "suggestion": ""},
+                ]
+
+            _push_event(session_id, "eval_result", {
+                "stage": "eval_done",
+                "message": f"✅ Evaluation complete — Readiness Score: {overall_score:.1f}/10",
+                "overall_score": overall_score,
+                "dimensions": dimensions,
+                "raw": raw_eval
+            })
+
+            # ── Stage 2: VC Matchmaking ──
+            _push_event(session_id, "status", {
+                "stage": "vc_research",
+                "message": "💰 Finding VCs aligned with your startup domain..."
+            })
+
+            vc_report = ""
+            try:
+                from vc_research import find_vcs
+                vc_report = find_vcs(
+                    market=domain,
+                    idea_name=startup_name,
+                    idea_content=description,
+                    pain_point=problem_solved,
+                    max_results=5,
+                    max_deep_scrape=2,
+                    max_chars=3000,
+                )
+            except Exception as vc_err:
+                vc_report = f"VC research unavailable: {vc_err}"
+
+            _push_event(session_id, "vc_research", {
+                "stage": "vc_done",
+                "message": "💰 VC matchmaking complete",
+                "vc_report": vc_report
+            })
+
+            # ── Stage 3: Save to DB ──
+            import json as _json
+            dim_scores_json = _json.dumps(dimensions)
+            all_suggestions = [d["suggestion"] for d in dimensions if d.get("suggestion")]
+            suggestions_text = "\n".join(all_suggestions)
+            feedback_text = "\n".join([f"{d['name']}: {d['feedback']}" for d in dimensions])
+
+            save_user_idea(
+                startup_name=startup_name,
+                domain=domain,
+                sector=sector,
+                stage=stage,
+                monthly_revenue=monthly_revenue,
+                annual_turnover=annual_turnover,
+                team_size=team_size,
+                description=description,
+                problem_solved=problem_solved,
+                target_customer=target_customer,
+                competitors=competitors,
+                funding_sought=funding_sought,
+                readiness_score=overall_score,
+                dimension_scores=dim_scores_json,
+                feedback=feedback_text,
+                suggestions=suggestions_text,
+                vc_report=vc_report,
+            )
+
+            _push_event(session_id, "saved", {
+                "message": "💾 Evaluation saved!",
+                "overall_score": overall_score,
+                "dimensions": dimensions,
+                "vc_report": vc_report,
+            })
+            _push_event(session_id, "done", {"message": "✅ Evaluation complete!"})
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            _push_event(session_id, "error", {"message": f"Evaluation error: {str(e)}"})
 
     thread = threading.Thread(target=run, daemon=True)
     thread.start()

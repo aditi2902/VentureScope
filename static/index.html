@@ -27,6 +27,9 @@
                 <button id="btn-open-vcs" class="btn-saved-ideas" style="background: var(--green); color: var(--text);">
                     <i class="fas fa-handshake"></i> VC Matchmaker
                 </button>
+                <button id="btn-open-pitch" class="btn-saved-ideas" style="background: var(--orange); color: var(--text);">
+                    <i class="fas fa-briefcase"></i> Pitch My Idea
+                </button>
             </div>
         </div>
     </nav>
@@ -270,6 +273,185 @@
             <div class="empty-state">
                 <div class="empty-state-icon">💰</div>
                 <p>No VC matchings found.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pitch My Idea Panel -->
+    <div class="ideas-overlay" id="pitch-overlay"></div>
+    <div class="ideas-panel pitch-panel" id="pitch-panel">
+        <div class="ideas-panel-header" style="background: var(--orange);">
+            <h2><i class="fas fa-briefcase"></i> Pitch My Idea</h2>
+            <button class="close-panel-btn" id="btn-close-pitch"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- Pitch Step Indicators -->
+        <div class="pitch-step-nav" id="pitch-step-nav">
+            <div class="pitch-step-tab active" id="pitch-tab-1">
+                <span class="pitch-step-num">01</span> Your Startup
+            </div>
+            <div class="pitch-step-connector"></div>
+            <div class="pitch-step-tab" id="pitch-tab-2">
+                <span class="pitch-step-num">02</span> Evaluation
+            </div>
+        </div>
+
+        <!-- Step 1: Intake Form -->
+        <div class="pitch-step-body" id="pitch-step-1">
+            <form id="pitch-form" autocomplete="off">
+                <div class="pitch-form-section">
+                    <div class="pitch-form-section-title"><i class="fas fa-rocket"></i> Startup Basics</div>
+                    <div class="form-group">
+                        <label for="pitch-name">Startup Name *</label>
+                        <input type="text" id="pitch-name" class="form-input" placeholder="e.g. ReviveHub" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="pitch-domain">Domain / Market *</label>
+                        <input type="text" id="pitch-domain" class="form-input" placeholder="e.g. Gaming, HealthTech, EdTech" required>
+                    </div>
+                    <div class="pitch-form-row">
+                        <div class="form-group">
+                            <label for="pitch-sector">Sector</label>
+                            <select id="pitch-sector" class="form-select">
+                                <option>B2B SaaS</option>
+                                <option>B2C Mobile App</option>
+                                <option>FinTech</option>
+                                <option>HealthTech</option>
+                                <option>DeepTech</option>
+                                <option>Hardware</option>
+                                <option>E-commerce</option>
+                                <option>Marketplace</option>
+                                <option>EdTech</option>
+                                <option>Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pitch-stage">Current Stage</label>
+                            <select id="pitch-stage" class="form-select">
+                                <option>Idea / Concept</option>
+                                <option>MVP / Prototype</option>
+                                <option>Early Revenue</option>
+                                <option>Growth / Scaling</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="pitch-description">Startup Description *</label>
+                        <textarea id="pitch-description" class="form-input" rows="3" placeholder="Briefly describe what your startup does, your product/service, and key features..." required style="resize:vertical;"></textarea>
+                    </div>
+                </div>
+
+                <div class="pitch-form-section">
+                    <div class="pitch-form-section-title"><i class="fas fa-chart-bar"></i> Business Metrics</div>
+                    <div class="pitch-form-row">
+                        <div class="form-group">
+                            <label for="pitch-monthly-revenue">Monthly Revenue</label>
+                            <input type="text" id="pitch-monthly-revenue" class="form-input" placeholder="e.g. $5,000 / month or Pre-revenue">
+                        </div>
+                        <div class="form-group">
+                            <label for="pitch-annual-turnover">Annual Turnover</label>
+                            <input type="text" id="pitch-annual-turnover" class="form-input" placeholder="e.g. $60,000 / year or Pre-revenue">
+                        </div>
+                    </div>
+                    <div class="pitch-form-row">
+                        <div class="form-group">
+                            <label for="pitch-team-size">Team Size</label>
+                            <select id="pitch-team-size" class="form-select">
+                                <option>Solo Founder</option>
+                                <option>2 Co-founders</option>
+                                <option>3-5 People</option>
+                                <option>6-10 People</option>
+                                <option>10+ People</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pitch-funding">Funding Sought</label>
+                            <select id="pitch-funding" class="form-select">
+                                <option>Not seeking funding</option>
+                                <option>Pre-seed (&lt;$100k)</option>
+                                <option>Seed ($100k–$1M)</option>
+                                <option>Series A ($1M–$5M)</option>
+                                <option>Series B+ ($5M+)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pitch-form-section">
+                    <div class="pitch-form-section-title"><i class="fas fa-bullseye"></i> Problem &amp; Market</div>
+                    <div class="form-group">
+                        <label for="pitch-problem">Problem Being Solved *</label>
+                        <textarea id="pitch-problem" class="form-input" rows="2" placeholder="What exact problem does your startup solve? Who faces this problem?" required style="resize:vertical;"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="pitch-customer">Target Customer</label>
+                        <input type="text" id="pitch-customer" class="form-input" placeholder="e.g. Independent game studios, SMB retailers, B2B logistics firms">
+                    </div>
+                    <div class="form-group">
+                        <label for="pitch-competitors">Key Competitors</label>
+                        <input type="text" id="pitch-competitors" class="form-input" placeholder="e.g. Competitor A, Competitor B — or 'None known'">
+                    </div>
+                </div>
+
+                <div class="pitch-cta">
+                    <button type="submit" class="btn btn-primary btn-lg" id="btn-pitch-submit" style="background: var(--orange); width: 100%;">
+                        <i class="fas fa-magic"></i> Evaluate My Startup
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Step 2: Evaluation Results -->
+        <div class="pitch-step-body hidden" id="pitch-step-2">
+            <!-- Live log -->
+            <div class="pitch-live-log" id="pitch-log">
+                <div class="live-log-header">
+                    <div class="live-log-dot" style="background: var(--orange);"></div> Evaluating your startup...
+                </div>
+                <div id="pitch-log-entries"></div>
+            </div>
+
+            <!-- Score Gauge + Overall -->
+            <div class="readiness-gauge-container hidden" id="readiness-gauge-section">
+                <div class="readiness-gauge-wrap">
+                    <svg class="readiness-svg" viewBox="0 0 200 200">
+                        <circle class="gauge-track" cx="100" cy="100" r="80"/>
+                        <circle class="gauge-fill" id="gauge-fill" cx="100" cy="100" r="80"
+                            stroke-dasharray="502.65"
+                            stroke-dashoffset="502.65"
+                            transform="rotate(-90 100 100)"/>
+                    </svg>
+                    <div class="gauge-center">
+                        <div class="gauge-score" id="gauge-score-text">0.0</div>
+                        <div class="gauge-label">/ 10</div>
+                    </div>
+                </div>
+                <div class="readiness-label-block">
+                    <div class="readiness-title" id="readiness-label">Calculating...</div>
+                    <div class="readiness-subtitle">Investor Readiness Score</div>
+                </div>
+            </div>
+
+            <!-- Dimension Cards -->
+            <div class="dimension-grid hidden" id="dimension-grid"></div>
+
+            <!-- Suggestions -->
+            <div class="suggestions-block hidden" id="suggestions-block">
+                <div class="suggestions-title"><i class="fas fa-lightbulb"></i> AI Improvement Suggestions</div>
+                <div id="suggestions-list"></div>
+            </div>
+
+            <!-- VC Matches -->
+            <div class="pitch-vc-section hidden" id="pitch-vc-section">
+                <div class="suggestions-title"><i class="fas fa-handshake"></i> Recommended VCs for Your Startup</div>
+                <div id="pitch-vc-content" class="md-content" style="background:var(--bg-alt); padding:16px; border-radius:var(--radius-sm); border:2px solid var(--border); max-height:350px; overflow-y:auto;"></div>
+            </div>
+
+            <!-- Re-evaluate button -->
+            <div class="pitch-cta hidden" id="pitch-redo">
+                <button class="btn btn-secondary btn-lg" id="btn-pitch-redo" style="width: 100%;">
+                    <i class="fas fa-redo"></i> Evaluate Another Startup
+                </button>
             </div>
         </div>
     </div>

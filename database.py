@@ -99,6 +99,31 @@ def init_db():
                 embedding   BLOB
             )
         """)
+
+        # User-submitted startup evaluations
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_ideas (
+                id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp         TEXT NOT NULL DEFAULT (datetime('now')),
+                startup_name      TEXT NOT NULL,
+                domain            TEXT,
+                sector            TEXT,
+                stage             TEXT,
+                monthly_revenue   TEXT,
+                annual_turnover   TEXT,
+                team_size         TEXT,
+                description       TEXT,
+                problem_solved    TEXT,
+                target_customer   TEXT,
+                competitors       TEXT,
+                funding_sought    TEXT,
+                readiness_score   REAL,
+                dimension_scores  TEXT,
+                feedback          TEXT,
+                suggestions       TEXT,
+                vc_report         TEXT
+            )
+        """)
     else:
         # PostgreSQL schema
         cur.execute("""
@@ -136,6 +161,31 @@ def init_db():
                 topic       TEXT NOT NULL,
                 pain_point  TEXT NOT NULL,
                 embedding   BYTEA
+            )
+        """)
+
+        # User-submitted startup evaluations
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS user_ideas (
+                id                SERIAL PRIMARY KEY,
+                timestamp         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                startup_name      TEXT NOT NULL,
+                domain            TEXT,
+                sector            TEXT,
+                stage             TEXT,
+                monthly_revenue   TEXT,
+                annual_turnover   TEXT,
+                team_size         TEXT,
+                description       TEXT,
+                problem_solved    TEXT,
+                target_customer   TEXT,
+                competitors       TEXT,
+                funding_sought    TEXT,
+                readiness_score   REAL,
+                dimension_scores  TEXT,
+                feedback          TEXT,
+                suggestions       TEXT,
+                vc_report         TEXT
             )
         """)
 
@@ -304,3 +354,106 @@ def get_all_generated_pain_points():
         }
         for r in records
     ]
+
+
+# ─────────────────────────────────────────────
+# USER-SUBMITTED IDEAS (Pitch My Idea)
+# ─────────────────────────────────────────────
+
+def save_user_idea(
+    startup_name: str,
+    domain: str = "",
+    sector: str = "",
+    stage: str = "",
+    monthly_revenue: str = "",
+    annual_turnover: str = "",
+    team_size: str = "",
+    description: str = "",
+    problem_solved: str = "",
+    target_customer: str = "",
+    competitors: str = "",
+    funding_sought: str = "",
+    readiness_score: float = None,
+    dimension_scores: str = "",
+    feedback: str = "",
+    suggestions: str = "",
+    vc_report: str = "",
+):
+    """Save a user-submitted startup evaluation."""
+    conn = _get_conn()
+    ph = _placeholder()
+    cur = conn.cursor()
+    now_str = datetime.datetime.utcnow().isoformat()
+
+    cur.execute(f"""
+        INSERT INTO user_ideas (
+            timestamp, startup_name, domain, sector, stage,
+            monthly_revenue, annual_turnover, team_size,
+            description, problem_solved, target_customer, competitors,
+            funding_sought, readiness_score, dimension_scores,
+            feedback, suggestions, vc_report
+        ) VALUES ({ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph},{ph})
+    """, (
+        now_str, startup_name, domain, sector, stage,
+        monthly_revenue, annual_turnover, team_size,
+        description, problem_solved, target_customer, competitors,
+        funding_sought, readiness_score, dimension_scores,
+        feedback, suggestions, vc_report,
+    ))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+
+def get_all_user_ideas():
+    """Retrieve all user-submitted startup evaluations, latest first."""
+    conn = _get_conn()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, timestamp, startup_name, domain, sector, stage,
+               monthly_revenue, annual_turnover, team_size,
+               description, problem_solved, target_customer, competitors,
+               funding_sought, readiness_score, dimension_scores,
+               feedback, suggestions, vc_report
+        FROM user_ideas
+        ORDER BY id DESC
+    """)
+    records = cur.fetchall()
+    cur.close()
+    conn.close()
+
+    return [
+        {
+            "id":               r[0],
+            "timestamp":        str(r[1]),
+            "startup_name":     r[2],
+            "domain":           r[3],
+            "sector":           r[4],
+            "stage":            r[5],
+            "monthly_revenue":  r[6],
+            "annual_turnover":  r[7],
+            "team_size":        r[8],
+            "description":      r[9],
+            "problem_solved":   r[10],
+            "target_customer":  r[11],
+            "competitors":      r[12],
+            "funding_sought":   r[13],
+            "readiness_score":  r[14],
+            "dimension_scores": r[15],
+            "feedback":         r[16],
+            "suggestions":      r[17],
+            "vc_report":        r[18],
+        }
+        for r in records
+    ]
+
+
+def delete_user_idea(idea_id: int):
+    """Delete a user-submitted idea by ID."""
+    conn = _get_conn()
+    ph = _placeholder()
+    cur = conn.cursor()
+    cur.execute(f"DELETE FROM user_ideas WHERE id = {ph}", (idea_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
