@@ -968,6 +968,153 @@ a {
   right: 0;
 }
 
+/* ═══════════════════════════════════════════════════════
+   FULL-PAGE PANEL VARIANT (VC Matchmaker, Pitch My Idea)
+   Same open/close JS toggle as the slide-out drawer above —
+   only the geometry changes so it reads as a full page.
+   ═══════════════════════════════════════════════════════ */
+
+.ideas-panel.full-page-panel {
+  width: 100%;
+  max-width: 100%;
+  right: -100%;
+  border-left: none;
+  box-shadow: none;
+}
+
+.ideas-panel.full-page-panel.open {
+  right: 0;
+}
+
+/* The panel already has 24px padding (see .ideas-panel above) — pull the
+   navbar back out to the edges so it spans full-width like the landing page. */
+.full-page-panel .panel-navbar {
+  margin: -24px -24px 0 -24px;
+}
+
+.full-page-panel .panel-navbar .js-nav-btn.active {
+  box-shadow: inset 0 0 0 3px var(--text);
+}
+
+.full-page-panel .panel-close-btn {
+  margin-left: 4px;
+}
+
+.panel-page-header {
+  padding: 28px 0 4px;
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.panel-page-header h2 {
+  font-family: var(--font-heading);
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.panel-page-subtitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.full-page-panel #pitch-step-1,
+.full-page-panel #pitch-step-2,
+.full-page-panel #vcs-list,
+.full-page-panel #ideas-list,
+.full-page-panel .saved-ideas-filter-bar {
+  max-width: 900px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.full-page-panel .pitch-step-nav {
+  max-width: 948px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.panel-content-pad {
+  padding-top: 20px;
+}
+
+/* ── Saved Ideas: filter bar ── */
+.saved-ideas-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-tab {
+  padding: 8px 14px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.filter-tab:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-md);
+}
+
+.filter-tab.active {
+  background: var(--yellow);
+  color: var(--text);
+  box-shadow: var(--shadow-md);
+}
+
+.filter-controls {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filter-search-input,
+.filter-sort-select {
+  padding: 8px 12px;
+  border: var(--border-w) solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+}
+
+.filter-search-input {
+  min-width: 180px;
+}
+
+/* ── Idea card type badge (consistent across generated / pitched) ── */
+.idea-type-badge {
+  font-size: 0.7rem;
+  padding: 3px 10px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border);
+  font-weight: bold;
+  font-family: var(--font-heading);
+  white-space: nowrap;
+}
+
 .ideas-panel-header {
   display: flex;
   align-items: center;

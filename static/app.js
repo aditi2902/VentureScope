@@ -38,22 +38,48 @@ const resultStream = document.getElementById("result-stream");
 const finalDashboard = document.getElementById("final-dashboard");
 
 // Theme
-const themeToggle = document.getElementById("btn-theme-toggle");
 const body = document.body;
 
 // Ideas Panel
-const btnOpenIdeas = document.getElementById("btn-open-ideas");
-const btnCloseIdeas = document.getElementById("btn-close-ideas");
 const ideasOverlay = document.getElementById("ideas-overlay");
 const ideasPanel = document.getElementById("ideas-panel");
 const ideasList = document.getElementById("ideas-list");
 
 // VCs Panel
-const btnOpenVcs = document.getElementById("btn-open-vcs");
-const btnCloseVcs = document.getElementById("btn-close-vcs");
 const vcsOverlay = document.getElementById("vcs-overlay");
 const vcsPanel = document.getElementById("vcs-panel");
 const vcsList = document.getElementById("vcs-list");
+
+// ── Full-page panel switching (Saved Ideas / VC Matchmaker / Pitch My Idea) ──
+// Every panel carries its own copy of the navbar (see index.html), so nav
+// buttons, the theme toggle, and the close button all exist in multiple
+// places in the DOM — handlers below are attached via querySelectorAll
+// rather than a single getElementById so every copy works identically.
+
+function closeAllPanels() {
+    ideasOverlay.classList.remove("open");
+    ideasPanel.classList.remove("open");
+    vcsOverlay.classList.remove("open");
+    vcsPanel.classList.remove("open");
+    pitchOverlay.classList.remove("open");
+    pitchPanel.classList.remove("open");
+}
+
+function openPanel(target) {
+    closeAllPanels();
+    if (target === "ideas") {
+        ideasOverlay.classList.add("open");
+        ideasPanel.classList.add("open");
+        loadSavedIdeas();
+    } else if (target === "vcs") {
+        vcsOverlay.classList.add("open");
+        vcsPanel.classList.add("open");
+        loadVCMatchmaker();
+    } else if (target === "pitch") {
+        pitchOverlay.classList.add("open");
+        pitchPanel.classList.add("open");
+    }
+}
 
 // ── Initialization ──
 document.addEventListener("DOMContentLoaded", () => {
@@ -62,45 +88,58 @@ document.addEventListener("DOMContentLoaded", () => {
     body.setAttribute("data-theme", savedTheme);
     updateThemeIcon(savedTheme);
 
-    themeToggle.addEventListener("click", () => {
-        const currentTheme = body.getAttribute("data-theme");
-        const newTheme = currentTheme === "light" ? "dark" : "light";
-        body.setAttribute("data-theme", newTheme);
-        localStorage.setItem("theme", newTheme);
-        updateThemeIcon(newTheme);
+    document.querySelectorAll(".js-theme-toggle").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const currentTheme = body.getAttribute("data-theme");
+            const newTheme = currentTheme === "light" ? "dark" : "light";
+            body.setAttribute("data-theme", newTheme);
+            localStorage.setItem("theme", newTheme);
+            updateThemeIcon(newTheme);
+        });
     });
 
-    // Ideas Panel
-    btnOpenIdeas.addEventListener("click", () => {
-        closeVcs();
-        ideasOverlay.classList.add("open");
-        ideasPanel.classList.add("open");
-        loadSavedIdeas();
+    document.querySelectorAll(".js-nav-btn").forEach(btn => {
+        btn.addEventListener("click", () => openPanel(btn.dataset.target));
     });
-    
-    const closeIdeas = () => {
-        ideasOverlay.classList.remove("open");
-        ideasPanel.classList.remove("open");
-    };
-    btnCloseIdeas.addEventListener("click", closeIdeas);
-    ideasOverlay.addEventListener("click", closeIdeas);
 
-    // VCs Panel
-    if (btnOpenVcs) {
-        btnOpenVcs.addEventListener("click", () => {
-            closeIdeas();
-            vcsOverlay.classList.add("open");
-            vcsPanel.classList.add("open");
-            loadVCMatchmaker();
+    document.querySelectorAll(".js-nav-home").forEach(el => {
+        el.addEventListener("click", closeAllPanels);
+    });
+
+    document.querySelectorAll(".panel-close-btn").forEach(btn => {
+        btn.addEventListener("click", closeAllPanels);
+    });
+
+    [ideasOverlay, vcsOverlay, pitchOverlay].forEach(overlay => {
+        overlay.addEventListener("click", closeAllPanels);
+    });
+
+    // Saved Ideas — filter bar
+    const filterTabs = document.getElementById("filter-tabs");
+    if (filterTabs) {
+        filterTabs.querySelectorAll(".filter-tab").forEach(tab => {
+            tab.addEventListener("click", () => {
+                filterTabs.querySelectorAll(".filter-tab").forEach(t => t.classList.remove("active"));
+                tab.classList.add("active");
+                savedIdeasFilterState.type = tab.dataset.filter;
+                renderSavedIdeasList();
+            });
         });
     }
-    
-    const closeVcs = () => {
-        vcsOverlay.classList.remove("open");
-        vcsPanel.classList.remove("open");
-    };
-    if (btnCloseVcs) btnCloseVcs.addEventListener("click", closeVcs);
-    if (vcsOverlay) vcsOverlay.addEventListener("click", closeVcs);
+    const ideasSearchInput = document.getElementById("ideas-search-input");
+    if (ideasSearchInput) {
+        ideasSearchInput.addEventListener("input", () => {
+            savedIdeasFilterState.search = ideasSearchInput.value;
+            renderSavedIdeasList();
+        });
+    }
+    const ideasSortSelect = document.getElementById("ideas-sort-select");
+    if (ideasSortSelect) {
+        ideasSortSelect.addEventListener("change", () => {
+            savedIdeasFilterState.sort = ideasSortSelect.value;
+            renderSavedIdeasList();
+        });
+    }
 
     // Form Navigation
     formStep1.addEventListener("submit", handleStep1Submit);
@@ -110,12 +149,9 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function updateThemeIcon(theme) {
-    const icon = themeToggle.querySelector("i");
-    if (theme === "dark") {
-        icon.className = "fas fa-sun";
-    } else {
-        icon.className = "fas fa-moon";
-    }
+    document.querySelectorAll(".js-theme-toggle i").forEach(icon => {
+        icon.className = theme === "dark" ? "fas fa-sun" : "fas fa-moon";
+    });
 }
 
 // ── Step Navigation ──
@@ -294,7 +330,7 @@ function handlePipelineEvents(event) {
         updatePipelineNode(data.stage);
     }
     else if (event.type === "idea_generated") {
-        addStreamCard("idea", `💡 Idea: ${data.idea_name}`, `**STARTUP NAME:** ${data.idea_name}\n\n${data.idea_content}`);
+        addStreamCard("idea", `💡 ${data.idea_name}`, data.idea_content);
         setNodeComplete("idea");
     }
     else if (event.type === "web_research_done") {
@@ -369,9 +405,10 @@ function listenToSSE(sessionId, callback) {
 }
 
 function addLog(msg) {
+    const heading = msg.length > 120 ? msg.slice(0, 120).trim() + "…" : msg;
     const entry = document.createElement("div");
     entry.className = "log-entry";
-    entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    entry.textContent = `[${new Date().toLocaleTimeString()}] ${heading}`;
     logEntries.appendChild(entry);
     // Auto-scroll
     logEntries.parentElement.scrollTop = logEntries.parentElement.scrollHeight;
@@ -494,66 +531,170 @@ function resetApp() {
 }
 
 // ── Saved Ideas Logic ──
+let savedIdeasCache = [];
+let savedIdeasFilterState = { type: "all", search: "", sort: "newest" };
+
 async function loadSavedIdeas() {
     ideasList.innerHTML = '<div class="text-center mt-32"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
-    
+
     try {
-        const res = await fetch(`${API_BASE}/ideas`);
-        const ideas = await res.json();
-        
-        if (ideas.length === 0) {
-            ideasList.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">📂</div>
-                    <p>No saved ideas yet.</p>
-                </div>
-            `;
-            return;
-        }
-        
-        ideasList.innerHTML = "";
-        ideas.forEach(idea => {
-            const card = document.createElement("div");
-            card.className = "idea-card";
-            card.innerHTML = `
-                <div class="idea-card-title">
-                    🚀 ${idea.idea_name}
-                </div>
-                <div class="idea-card-meta">
-                    Topic: ${idea.topic} • ${idea.timestamp.split(' ')[0]}
-                </div>
-                <div class="idea-card-score">Score: ${idea.score?.toFixed(1) || '-'}</div>
-                
-                <div class="idea-card-content md-content">
-                    ${marked.parse(idea.idea_description)}
-                    <h4 class="mt-16">Verdict</h4>
-                    <p>${idea.explanation}</p>
-                    ${idea.vc_report ? `<h4 class="mt-16"><i class="fas fa-handshake"></i> Matched VCs</h4><div style="background: var(--bg-alt); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 8px;">${marked.parse(idea.vc_report)}</div>` : ''}
-                </div>
-                
-                <div class="idea-card-actions">
-                    <button class="btn btn-primary btn-sm btn-expand"><i class="fas fa-expand"></i> View</button>
-                    <button class="btn btn-danger btn-sm btn-delete"><i class="fas fa-trash"></i> Delete</button>
-                </div>
-            `;
-            
-            card.querySelector(".btn-expand").addEventListener("click", () => {
-                card.classList.toggle("expanded");
-            });
-            
-            card.querySelector(".btn-delete").addEventListener("click", async () => {
-                if(confirm("Delete this idea?")) {
-                    await fetch(`${API_BASE}/ideas/${idea.id}`, { method: "DELETE" });
-                    loadSavedIdeas();
-                }
-            });
-            
-            ideasList.appendChild(card);
-        });
-        
+        const [ideasRes, userIdeasRes] = await Promise.all([
+            fetch(`${API_BASE}/ideas`),
+            fetch(`${API_BASE}/user-ideas`)
+        ]);
+        const ideas = await ideasRes.json();
+        const userIdeas = userIdeasRes.ok ? await userIdeasRes.json() : [];
+
+        savedIdeasCache = [
+            ...ideas.map(idea => ({
+                origin: "generated",
+                name: idea.idea_name,
+                score: idea.score,
+                timestamp: idea.timestamp,
+                data: idea
+            })),
+            ...userIdeas.map(idea => ({
+                origin: "pitched",
+                name: idea.startup_name,
+                score: idea.readiness_score,
+                timestamp: idea.timestamp,
+                data: idea
+            }))
+        ];
+
+        renderSavedIdeasList();
+
     } catch (e) {
         ideasList.innerHTML = `<p style="color:red">Failed to load ideas: ${e.message}</p>`;
     }
+}
+
+function renderSavedIdeasList() {
+    if (savedIdeasCache.length === 0) {
+        ideasList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">📂</div>
+                <p>No saved ideas yet.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const { type, search, sort } = savedIdeasFilterState;
+    const searchLower = search.trim().toLowerCase();
+
+    let filtered = savedIdeasCache.filter(entry => {
+        if (type !== "all" && entry.origin !== type) return false;
+        if (searchLower && !entry.name?.toLowerCase().includes(searchLower)) return false;
+        return true;
+    });
+
+    filtered = filtered.sort((a, b) => {
+        if (sort === "newest") return new Date(b.timestamp) - new Date(a.timestamp);
+        if (sort === "oldest") return new Date(a.timestamp) - new Date(b.timestamp);
+        if (sort === "score-desc") return (b.score ?? -1) - (a.score ?? -1);
+        if (sort === "score-asc") return (a.score ?? -1) - (b.score ?? -1);
+        return 0;
+    });
+
+    if (filtered.length === 0) {
+        ideasList.innerHTML = `
+            <div class="empty-state">
+                <div class="empty-state-icon">🔍</div>
+                <p>No ideas match your filters.</p>
+            </div>
+        `;
+        return;
+    }
+
+    ideasList.innerHTML = "";
+    filtered.forEach(entry => {
+        const card = entry.origin === "generated"
+            ? buildGeneratedIdeaCard(entry.data)
+            : buildPitchedIdeaCard(entry.data);
+        ideasList.appendChild(card);
+    });
+}
+
+function buildGeneratedIdeaCard(idea) {
+    const card = document.createElement("div");
+    card.className = "idea-card";
+    card.innerHTML = `
+        <div class="idea-card-title flex-between" style="display:flex; align-items:center; justify-content:space-between;">
+            <span>🚀 ${idea.idea_name}</span>
+            <span class="idea-type-badge" style="background: var(--blue);">AI Generated</span>
+        </div>
+        <div class="idea-card-meta">
+            Topic: ${idea.topic} • ${idea.timestamp.split(' ')[0]}
+        </div>
+        <div class="idea-card-score">Investment Score: ${idea.score?.toFixed(1) || '-'} / 10</div>
+
+        <div class="idea-card-content md-content">
+            ${marked.parse(idea.idea_description)}
+            <h4 class="mt-16">Verdict</h4>
+            <p>${idea.explanation}</p>
+            ${idea.vc_report ? `<h4 class="mt-16"><i class="fas fa-handshake"></i> Matched VCs</h4><div style="background: var(--bg-alt); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 8px;">${marked.parse(idea.vc_report)}</div>` : ''}
+        </div>
+
+        <div class="idea-card-actions">
+            <button class="btn btn-primary btn-sm btn-expand"><i class="fas fa-expand"></i> View</button>
+            <button class="btn btn-danger btn-sm btn-delete"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+    `;
+
+    card.querySelector(".btn-expand").addEventListener("click", () => {
+        card.classList.toggle("expanded");
+    });
+
+    card.querySelector(".btn-delete").addEventListener("click", async () => {
+        if(confirm("Delete this idea?")) {
+            await fetch(`${API_BASE}/ideas/${idea.id}`, { method: "DELETE" });
+            loadSavedIdeas();
+        }
+    });
+
+    return card;
+}
+
+function buildPitchedIdeaCard(idea) {
+    const card = document.createElement("div");
+    card.className = "idea-card";
+    card.innerHTML = `
+        <div class="idea-card-title flex-between" style="display:flex; align-items:center; justify-content:space-between;">
+            <span>📝 ${idea.startup_name}</span>
+            <span class="idea-type-badge" style="background: var(--orange);">Your Pitch</span>
+        </div>
+        <div class="idea-card-meta">
+            Domain: ${idea.domain}${idea.sector ? ` • ${idea.sector}` : ''} • ${idea.timestamp.split('T')[0]}
+        </div>
+        <div class="idea-card-score">Readiness Score: ${idea.readiness_score?.toFixed(1) || '-'} / 10</div>
+
+        <div class="idea-card-content md-content">
+            ${marked.parse(idea.description || "")}
+            ${idea.problem_solved ? `<h4 class="mt-16">Problem Solved</h4><p>${idea.problem_solved}</p>` : ''}
+            ${idea.feedback ? `<h4 class="mt-16">Investor Feedback</h4>${marked.parse(idea.feedback)}` : ''}
+            ${idea.suggestions ? `<h4 class="mt-16">Suggestions</h4>${marked.parse(idea.suggestions)}` : ''}
+            ${idea.vc_report ? `<h4 class="mt-16"><i class="fas fa-handshake"></i> Matched VCs</h4><div style="background: var(--bg-alt); padding: 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 8px;">${marked.parse(idea.vc_report)}</div>` : ''}
+        </div>
+
+        <div class="idea-card-actions">
+            <button class="btn btn-primary btn-sm btn-expand"><i class="fas fa-expand"></i> View</button>
+            <button class="btn btn-danger btn-sm btn-delete"><i class="fas fa-trash"></i> Delete</button>
+        </div>
+    `;
+
+    card.querySelector(".btn-expand").addEventListener("click", () => {
+        card.classList.toggle("expanded");
+    });
+
+    card.querySelector(".btn-delete").addEventListener("click", async () => {
+        if(confirm("Delete this pitch?")) {
+            await fetch(`${API_BASE}/user-ideas/${idea.id}`, { method: "DELETE" });
+            loadSavedIdeas();
+        }
+    });
+
+    return card;
 }
 
 // ── Confetti ──
@@ -771,12 +912,129 @@ async function loadVCMatchmaker() {
     }
 }
 
+function renderPitchVCResults(vcReport) {
+    const vcs = parseVCsFromReport(vcReport);
+    if (vcs.length === 0) {
+        pitchVcContent.innerHTML = marked.parse("No VCs matched for this startup.");
+        return;
+    }
+
+    // Deduplicate by name
+    const seen = new Set();
+    const deduped = vcs.filter(vc => {
+        if (seen.has(vc.name)) return false;
+        seen.add(vc.name);
+        return true;
+    });
+
+    pitchVcContent.innerHTML = "";
+    deduped.forEach((vc, idx) => {
+        const vcCard = document.createElement("div");
+        vcCard.style = "background: var(--surface); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-bottom: 12px;";
+
+        const email = vc.email || "info@vc.fund";
+        vcCard.innerHTML = `
+            <div style="font-weight: bold; font-size: 0.95rem; margin-bottom: 4px; font-family: var(--font-heading);">
+                ${vc.name} ${vc.location ? `<span style="font-weight: normal; font-size: 0.85rem; color: var(--text-muted);">(${vc.location})</span>` : ''}
+            </div>
+            ${vc.focus ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px;"><strong>Focus:</strong> ${vc.focus}</div>` : ''}
+            ${email !== "info@vc.fund" ? `<div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 6px;"><strong>Email:</strong> ${email}</div>` : ''}
+            <button class="btn btn-sm btn-primary btn-pitch-vc" data-email="${email}" data-name="${vc.name}" style="width: 100%; margin-top: 8px;">
+                <i class="fas fa-envelope"></i> Draft Pitch Email
+            </button>
+        `;
+        pitchVcContent.appendChild(vcCard);
+    });
+
+    // Add click handlers for draft email buttons
+    pitchVcContent.querySelectorAll(".btn-pitch-vc").forEach(btn => {
+        btn.addEventListener("click", (e) => {
+            const vcEmail = e.currentTarget.getAttribute("data-email");
+            const vcName = e.currentTarget.getAttribute("data-name");
+            openPitchEmailDraft(vcEmail, vcName);
+        });
+    });
+}
+
+function openPitchEmailDraft(vcEmail, vcName) {
+    // Build default email
+    const pitchName = document.getElementById("pitch-name").value || "Our Startup";
+    const pitchDomain = document.getElementById("pitch-domain").value || "our domain";
+    const pitchDescription = document.getElementById("pitch-description").value || "solving problems";
+
+    const defaultSubject = `Intro: ${pitchName} - ${pitchDomain}`;
+    const defaultBody = `Hi,\n\nI'm reaching out because we're building ${pitchName} to transform the ${pitchDomain} space.\n\n${pitchDescription}\n\nGiven your investment focus, I believe we'd be a strong fit for your portfolio. I'd love to share our pitch deck and discuss how we're solving this problem.\n\nBest,\n[Your Name]`;
+
+    const draftHTML = `
+        <div style="background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius-sm); padding: 16px; margin-top: 12px;">
+            <div style="font-weight: bold; margin-bottom: 12px; border-bottom: 2px solid var(--border); padding-bottom: 6px; display: flex; justify-content: space-between; align-items: center; font-family: var(--font-heading);">
+                <span>📧 Pitch Email to ${vcName}</span>
+                <button class="btn btn-secondary btn-sm btn-copy-pitch-draft" style="padding: 2px 8px; font-size: 0.75rem;"><i class="fas fa-copy"></i> Copy</button>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label style="display:block; font-weight:bold; margin-bottom:4px; font-size:0.85rem;">To:</label>
+                <input type="email" class="pitch-draft-email" value="${vcEmail}" style="width: 100%; padding: 6px 10px; font-size: 0.85rem; font-family: var(--font-mono); border: var(--border-w) solid var(--border); border-radius: var(--radius-sm);">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 12px;">
+                <label style="display:block; font-weight:bold; margin-bottom:4px; font-size:0.85rem;">Subject:</label>
+                <input type="text" class="pitch-draft-subject" value="${defaultSubject}" style="width: 100%; padding: 6px 10px; font-size: 0.85rem; border: var(--border-w) solid var(--border); border-radius: var(--radius-sm);">
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display:block; font-weight:bold; margin-bottom:4px; font-size:0.85rem;">Body:</label>
+                <textarea class="pitch-draft-body" rows="8" style="width: 100%; padding: 10px; font-size: 0.85rem; border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); font-family: var(--font-body); resize: vertical; line-height: 1.5;">${defaultBody}</textarea>
+            </div>
+
+            <div style="display: flex; gap: 8px;">
+                <a href="" target="_blank" class="btn btn-success btn-sm btn-send-pitch-email" style="flex: 1; text-align: center; display: inline-flex; align-items: center; justify-content: center; gap: 6px; background: var(--green); color: var(--text);">
+                    <i class="fas fa-paper-plane"></i> Send Email Directly
+                </a>
+            </div>
+        </div>
+    `;
+
+    // Find or create draft container
+    let draftContainer = pitchVcContent.parentElement.querySelector(".pitch-email-draft-container");
+    if (!draftContainer) {
+        draftContainer = document.createElement("div");
+        draftContainer.className = "pitch-email-draft-container";
+        pitchVcContent.parentElement.appendChild(draftContainer);
+    }
+
+    draftContainer.innerHTML = draftHTML;
+
+    const emailInput = draftContainer.querySelector(".pitch-draft-email");
+    const subjectInput = draftContainer.querySelector(".pitch-draft-subject");
+    const bodyInput = draftContainer.querySelector(".pitch-draft-body");
+    const sendBtn = draftContainer.querySelector(".btn-send-pitch-email");
+    const copyBtn = draftContainer.querySelector(".btn-copy-pitch-draft");
+
+    const refreshMailto = () => {
+        const to = emailInput.value;
+        const subject = subjectInput.value;
+        const body = bodyInput.value;
+        sendBtn.href = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    };
+
+    emailInput.addEventListener("input", refreshMailto);
+    subjectInput.addEventListener("input", refreshMailto);
+    bodyInput.addEventListener("input", refreshMailto);
+
+    copyBtn.addEventListener("click", () => {
+        navigator.clipboard.writeText(`To: ${emailInput.value}\nSubject: ${subjectInput.value}\n\n${bodyInput.value}`);
+        alert('Copied draft details to clipboard!');
+    });
+
+    refreshMailto();
+    draftContainer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
 // ═══════════════════════════════════════════════════════
 // PITCH MY IDEA — Panel, Form, SSE, UI Rendering
 // ═══════════════════════════════════════════════════════
 
-const btnOpenPitch  = document.getElementById("btn-open-pitch");
-const btnClosePitch = document.getElementById("btn-close-pitch");
 const pitchOverlay  = document.getElementById("pitch-overlay");
 const pitchPanel    = document.getElementById("pitch-panel");
 
@@ -801,26 +1059,6 @@ const pitchVcContent        = document.getElementById("pitch-vc-content");
 const pitchRedo             = document.getElementById("pitch-redo");
 
 let pitchSessionId = crypto.randomUUID();
-
-// ── Open / Close ──
-function closePitchPanel() {
-    pitchOverlay.classList.remove("open");
-    pitchPanel.classList.remove("open");
-}
-
-function openPitchPanel() {
-    // Close other panels first
-    document.getElementById("ideas-overlay").classList.remove("open");
-    document.getElementById("ideas-panel").classList.remove("open");
-    document.getElementById("vcs-overlay").classList.remove("open");
-    document.getElementById("vcs-panel").classList.remove("open");
-    pitchOverlay.classList.add("open");
-    pitchPanel.classList.add("open");
-}
-
-if (btnOpenPitch)  btnOpenPitch.addEventListener("click", openPitchPanel);
-if (btnClosePitch) btnClosePitch.addEventListener("click", closePitchPanel);
-if (pitchOverlay)  pitchOverlay.addEventListener("click", closePitchPanel);
 
 // ── Step navigation ──
 function showPitchStep(num) {
@@ -949,7 +1187,7 @@ function handlePitchEvent(event) {
     else if (event.type === "vc_research") {
         addPitchLog(data.message);
         pitchVcSection.classList.remove("hidden");
-        pitchVcContent.innerHTML = marked.parse(data.vc_report || "No VC data.");
+        renderPitchVCResults(data.vc_report);
     }
     else if (event.type === "saved") {
         addPitchLog("💾 Evaluation saved to database.");
@@ -969,9 +1207,10 @@ function handlePitchEvent(event) {
 
 // ── UI helpers ──
 function addPitchLog(msg) {
+    const heading = msg.length > 120 ? msg.slice(0, 120).trim() + "…" : msg;
     const el = document.createElement("div");
     el.className = "log-entry";
-    el.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    el.textContent = `[${new Date().toLocaleTimeString()}] ${heading}`;
     pitchLogEntries.appendChild(el);
     pitchLogEntries.parentElement.scrollTop = pitchLogEntries.parentElement.scrollHeight;
 }

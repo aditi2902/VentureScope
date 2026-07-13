@@ -8,6 +8,7 @@ web_research, embeddings, search_client) are imported and used as-is.
 
 import os
 import json
+import re
 import time
 import uuid
 import threading
@@ -364,12 +365,16 @@ Keep it between 200-400 words.>
                     })
                     idea_raw = invoke_with_retry(llama_llm, idea_prompt).strip()
 
-                # Parse startup name and description
-                if "STARTUP NAME:" in idea_raw:
-                    parts = idea_raw.split("---", 1)
-                    name_line = parts[0].strip()
-                    idea_name = name_line.replace("STARTUP NAME:", "").strip()
-                    idea_content = parts[1].strip() if len(parts) > 1 else idea_raw
+                # Parse startup name and description.
+                # Only take the first line after "STARTUP NAME:" as the name —
+                # if the LLM omits the "---" separator, splitting on "---" alone
+                # would swallow the entire description into idea_name.
+                name_match = re.search(r"STARTUP NAME:\s*(.+)", idea_raw)
+                if name_match:
+                    idea_name = name_match.group(1).split("\n")[0].strip().strip("*").strip()
+                    idea_content = idea_raw[name_match.end():].lstrip("-\n \t").strip()
+                    if not idea_content:
+                        idea_content = idea_raw
                 else:
                     idea_name = "Unnamed Startup"
                     idea_content = idea_raw

@@ -13,21 +13,21 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="container flex-between">
-            <div class="navbar-brand">
+            <div class="navbar-brand js-nav-home">
                 <span class="logo-icon">🚀</span>
                 <span>AI Startup Agent</span>
             </div>
             <div class="navbar-actions">
-                <button id="btn-theme-toggle" class="theme-toggle" title="Toggle Dark Mode">
+                <button id="btn-theme-toggle" class="theme-toggle js-theme-toggle" title="Toggle Dark Mode">
                     <i class="fas fa-moon"></i>
                 </button>
-                <button id="btn-open-ideas" class="btn-saved-ideas">
+                <button id="btn-open-ideas" class="btn-saved-ideas js-nav-btn" data-target="ideas">
                     <i class="fas fa-folder-open"></i> Saved Ideas
                 </button>
-                <button id="btn-open-vcs" class="btn-saved-ideas" style="background: var(--green); color: var(--text);">
+                <button id="btn-open-vcs" class="btn-saved-ideas js-nav-btn" data-target="vcs" style="background: var(--green); color: var(--text);">
                     <i class="fas fa-handshake"></i> VC Matchmaker
                 </button>
-                <button id="btn-open-pitch" class="btn-saved-ideas" style="background: var(--orange); color: var(--text);">
+                <button id="btn-open-pitch" class="btn-saved-ideas js-nav-btn" data-target="pitch" style="background: var(--orange); color: var(--text);">
                     <i class="fas fa-briefcase"></i> Pitch My Idea
                 </button>
             </div>
@@ -244,12 +244,46 @@
 
     <!-- Saved Ideas Panel -->
     <div class="ideas-overlay" id="ideas-overlay"></div>
-    <div class="ideas-panel" id="ideas-panel">
-        <div class="ideas-panel-header">
+    <div class="ideas-panel full-page-panel" id="ideas-panel">
+        <nav class="navbar panel-navbar">
+            <div class="container flex-between">
+                <div class="navbar-brand js-nav-home">
+                    <span class="logo-icon">🚀</span>
+                    <span>AI Startup Agent</span>
+                </div>
+                <div class="navbar-actions">
+                    <button class="theme-toggle js-theme-toggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+                    <button class="btn-saved-ideas js-nav-btn active" data-target="ideas"><i class="fas fa-folder-open"></i> Saved Ideas</button>
+                    <button class="btn-saved-ideas js-nav-btn" data-target="vcs" style="background: var(--green); color: var(--text);"><i class="fas fa-handshake"></i> VC Matchmaker</button>
+                    <button class="btn-saved-ideas js-nav-btn" data-target="pitch" style="background: var(--orange); color: var(--text);"><i class="fas fa-briefcase"></i> Pitch My Idea</button>
+                    <button class="close-panel-btn panel-close-btn" title="Close"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="panel-page-header">
             <h2><i class="fas fa-folder-open"></i> Saved Ideas</h2>
-            <button class="close-panel-btn" id="btn-close-ideas"><i class="fas fa-times"></i></button>
+            <p class="panel-page-subtitle">All your AI-generated concepts and self-pitched startups, in one place.</p>
         </div>
-        <div id="ideas-list">
+
+        <div class="saved-ideas-filter-bar">
+            <div class="filter-tabs" id="filter-tabs">
+                <button class="filter-tab active" data-filter="all">All</button>
+                <button class="filter-tab" data-filter="generated">🚀 AI Generated</button>
+                <button class="filter-tab" data-filter="pitched">📝 My Pitches</button>
+            </div>
+            <div class="filter-controls">
+                <input type="text" id="ideas-search-input" class="filter-search-input" placeholder="Search by name...">
+                <select id="ideas-sort-select" class="filter-sort-select">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="score-desc">Highest Score</option>
+                    <option value="score-asc">Lowest Score</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="ideas-list" class="panel-content-pad">
             <!-- Injected via JS -->
             <div class="empty-state">
                 <div class="empty-state-icon">📂</div>
@@ -260,15 +294,28 @@
 
     <!-- VC Matchmaker Panel -->
     <div class="ideas-overlay" id="vcs-overlay"></div>
-    <div class="ideas-panel" id="vcs-panel">
-        <div class="ideas-panel-header">
+    <div class="ideas-panel full-page-panel" id="vcs-panel">
+        <nav class="navbar panel-navbar">
+            <div class="container flex-between">
+                <div class="navbar-brand js-nav-home">
+                    <span class="logo-icon">🚀</span>
+                    <span>AI Startup Agent</span>
+                </div>
+                <div class="navbar-actions">
+                    <button class="theme-toggle js-theme-toggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+                    <button class="btn-saved-ideas js-nav-btn" data-target="ideas"><i class="fas fa-folder-open"></i> Saved Ideas</button>
+                    <button class="btn-saved-ideas js-nav-btn active" data-target="vcs" style="background: var(--green); color: var(--text);"><i class="fas fa-handshake"></i> VC Matchmaker</button>
+                    <button class="btn-saved-ideas js-nav-btn" data-target="pitch" style="background: var(--orange); color: var(--text);"><i class="fas fa-briefcase"></i> Pitch My Idea</button>
+                    <button class="close-panel-btn panel-close-btn" title="Close"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="panel-page-header">
             <h2><i class="fas fa-handshake"></i> VC Matchmaker Dashboard</h2>
-            <button class="close-panel-btn" id="btn-close-vcs"><i class="fas fa-times"></i></button>
+            <p class="panel-page-subtitle">Compare VC matchmaking metrics, target firm focus, and investor alignment across your approved startup concepts.</p>
         </div>
-        <div style="padding: 16px 24px; font-size: 0.9rem; color: var(--text-muted); border-bottom: 2px solid var(--border); font-family: var(--font-body);">
-            Compare VC matchmaking metrics, target firm focus, and investor alignment across your approved startup concepts.
-        </div>
-        <div id="vcs-list" style="padding: 24px; overflow-y: auto; max-height: calc(100vh - 150px);">
+        <div id="vcs-list" class="panel-content-pad" style="overflow-y: auto;">
             <!-- Injected via JS -->
             <div class="empty-state">
                 <div class="empty-state-icon">💰</div>
@@ -279,10 +326,26 @@
 
     <!-- Pitch My Idea Panel -->
     <div class="ideas-overlay" id="pitch-overlay"></div>
-    <div class="ideas-panel pitch-panel" id="pitch-panel">
-        <div class="ideas-panel-header" style="background: var(--orange);">
+    <div class="ideas-panel pitch-panel full-page-panel" id="pitch-panel">
+        <nav class="navbar panel-navbar">
+            <div class="container flex-between">
+                <div class="navbar-brand js-nav-home">
+                    <span class="logo-icon">🚀</span>
+                    <span>AI Startup Agent</span>
+                </div>
+                <div class="navbar-actions">
+                    <button class="theme-toggle js-theme-toggle" title="Toggle Dark Mode"><i class="fas fa-moon"></i></button>
+                    <button class="btn-saved-ideas js-nav-btn" data-target="ideas"><i class="fas fa-folder-open"></i> Saved Ideas</button>
+                    <button class="btn-saved-ideas js-nav-btn" data-target="vcs" style="background: var(--green); color: var(--text);"><i class="fas fa-handshake"></i> VC Matchmaker</button>
+                    <button class="btn-saved-ideas js-nav-btn active" data-target="pitch" style="background: var(--orange); color: var(--text);"><i class="fas fa-briefcase"></i> Pitch My Idea</button>
+                    <button class="close-panel-btn panel-close-btn" title="Close"><i class="fas fa-times"></i></button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="panel-page-header">
             <h2><i class="fas fa-briefcase"></i> Pitch My Idea</h2>
-            <button class="close-panel-btn" id="btn-close-pitch"><i class="fas fa-times"></i></button>
+            <p class="panel-page-subtitle">Get an investor-grade readiness score, dimension-by-dimension feedback, and matched VCs for your startup.</p>
         </div>
 
         <!-- Pitch Step Indicators -->
@@ -394,7 +457,7 @@
                 </div>
 
                 <div class="pitch-cta">
-                    <button type="submit" class="btn btn-primary btn-lg" id="btn-pitch-submit" style="background: var(--orange); width: 100%;">
+                    <button type="submit" class="btn btn-primary btn-lg" id="btn-pitch-submit" style="width: 100%;">
                         <i class="fas fa-magic"></i> Evaluate My Startup
                     </button>
                 </div>
