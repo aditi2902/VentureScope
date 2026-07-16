@@ -889,5 +889,5 @@ SUGGESTION: <actionable suggestion or NONE if score >= 7>
 # ═══════════════════════════════════════════
 
 if __name__ == "__main__":
-    print("\n🚀 AI Startup Agent running at http://localhost:5000\n")
-    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
+    print("\n🚀 AI Startup Agent running at http://localhost:5179\n")
+    app.run(host="0.0.0.0", port=5179, debug=False, threaded=True)

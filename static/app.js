@@ -2,7 +2,7 @@
    AI Startup Agent — Frontend Logic
    ═══════════════════════════════════════════════════════ */
 
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = "http://localhost:5179/api";
 
 // ── State ──
 let state = {
