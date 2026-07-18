@@ -8,34 +8,34 @@
 /* ── CSS Custom Properties ── */
 :root {
   /* Colors */
-  --bg: #FFF8E7;
-  --bg-alt: #FEF3CD;
+  --bg: #F8FAFC;
+  --bg-alt: #F1F5F9;
   --surface: #FFFFFF;
-  --text: #1A1A2E;
-  --text-muted: #555570;
-  --border: #1A1A2E;
+  --text: #0F172A;
+  --text-muted: #64748B;
+  --border: #E2E8F0;
 
-  /* Accent palette */
-  --yellow: #FFE156;
-  --pink: #FF6B9D;
-  --green: #7BF178;
-  --blue: #56CFFF;
-  --purple: #B388FF;
-  --orange: #FFA44F;
-  --red: #FF5252;
+  /* Accent palette (Premium) */
+  --yellow: #F59E0B;
+  --pink: #EC4899;
+  --green: #10B981;
+  --blue: #3B82F6;
+  --purple: #8B5CF6;
+  --orange: #F97316;
+  --red: #EF4444;
 
-  /* Neobrutalism tokens */
-  --border-w: 3px;
-  --shadow-sm: 3px 3px 0px var(--border);
-  --shadow-md: 5px 5px 0px var(--border);
-  --shadow-lg: 8px 8px 0px var(--border);
-  --shadow-xl: 12px 12px 0px var(--border);
+  /* Premium SaaS tokens */
+  --border-w: 1px;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
 
   /* Typography */
-  --font-heading: 'Space Grotesk', system-ui, sans-serif;
+  --font-heading: 'Inter', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
@@ -47,16 +47,16 @@
 
 /* ── Dark Theme ── */
 [data-theme="dark"] {
-  --bg: #0F0F1A;
-  --bg-alt: #1A1A2E;
-  --surface: #16213E;
-  --text: #EAEAFF;
-  --text-muted: #9999BB;
-  --border: #EAEAFF;
-  --shadow-sm: 3px 3px 0px rgba(234, 234, 255, 0.4);
-  --shadow-md: 5px 5px 0px rgba(234, 234, 255, 0.35);
-  --shadow-lg: 8px 8px 0px rgba(234, 234, 255, 0.3);
-  --shadow-xl: 12px 12px 0px rgba(234, 234, 255, 0.25);
+  --bg: #0F172A;
+  --bg-alt: #1E293B;
+  --surface: #0B0F19;
+  --text: #F8FAFC;
+  --text-muted: #94A3B8;
+  --border: #334155;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
 }
 
 /* ── Reset & Base ── */
@@ -153,13 +153,13 @@ a {
 }
 
 .theme-toggle:hover {
-  transform: translate(-2px, -2px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
 .theme-toggle:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0px var(--border);
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .btn-saved-ideas {
@@ -177,7 +177,7 @@ a {
 }
 
 .btn-saved-ideas:hover {
-  transform: translate(-2px, -2px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
@@ -426,7 +426,7 @@ a {
   font-size: 1rem;
   background: var(--bg);
   color: var(--text);
-  box-shadow: inset 2px 2px 0px rgba(0,0,0,0.05);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
   transition: all var(--transition-fast);
 }
 
@@ -456,7 +456,7 @@ a {
   font-size: 1rem;
   background: var(--bg);
   color: var(--text);
-  box-shadow: inset 2px 2px 0px rgba(0,0,0,0.05);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
   cursor: pointer;
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M6 8L1 3h10z' fill='%231A1A2E'/%3E%3C/svg%3E");
@@ -491,13 +491,13 @@ a {
 }
 
 .btn:hover {
-  transform: translate(-3px, -3px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
 }
 
 .btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0px var(--border);
+  transform: translateY(0);
+  box-shadow: none;
 }
 
 .btn:disabled {
@@ -564,14 +564,14 @@ a {
 }
 
 .pain-point-card:hover {
-  transform: translate(-3px, -3px);
+  transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
 }
 
 .pain-point-card.selected {
   background: var(--yellow);
   box-shadow: var(--shadow-lg);
-  transform: translate(-3px, -3px);
+  transform: translateY(-3px);
 }
 
 .pain-point-card .card-number {
@@ -1073,7 +1073,7 @@ a {
 }
 
 .filter-tab:hover {
-  transform: translate(-2px, -2px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 
@@ -1158,7 +1158,7 @@ a {
 
 .idea-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translate(-2px, -2px);
+  transform: translateY(-2px);
 }
 
 .idea-card-title {
@@ -1666,7 +1666,7 @@ a {
 }
 
 .dimension-card:hover {
-  transform: translate(-2px, -2px);
+  transform: translateY(-2px);
   box-shadow: var(--shadow-md);
 }
 

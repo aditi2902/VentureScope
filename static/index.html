@@ -36,13 +36,8 @@
 
     <!-- Hero Section -->
     <header class="hero">
-        <!-- Floating Neobrutalist Shapes -->
-        <div class="hero-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-            <div class="shape shape-4"></div>
-        </div>
+        <!-- Background mesh or gradient could go here instead of brutalist shapes -->
+        <div class="hero-shapes"></div>
         <div class="container hero-content">
             <h1>Turn Market Pain Into <br><span class="highlight">Startup Gold</span> 🚀</h1>
             <p class="hero-subtitle">Enter a market, let AI discover verified user pain points, and watch it generate, analyze, and debate an investable startup idea in real-time.</p>
@@ -219,6 +214,18 @@
                             <div class="score-ring" id="verdict-score">8.5</div>
                         </div>
                         <p class="md-content" id="verdict-explanation" style="text-align: left; background: var(--surface); padding: 20px; border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); margin-top: 20px;"></p>
+                    </div>
+
+                    <!-- Verification Report Section -->
+                    <div id="verification-report-container" class="mt-24 text-left">
+                        <h3 class="mb-16"><i class="fas fa-file-contract"></i> Startup Verification Report</h3>
+                        <div class="md-content" style="background: var(--surface); padding: 24px; border: var(--border-w) solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-md);">
+                            <h4 style="margin-top: 0;"><i class="fas fa-check-circle" style="color: var(--green);"></i> Originality & Worthiness Check</h4>
+                            <p id="verification-originality" style="margin-bottom: 24px;">Loading...</p>
+                            
+                            <h4><i class="fas fa-chart-line" style="color: var(--blue);"></i> Market Evidence (Hallucination Check)</h4>
+                            <div id="verification-analysis">Loading...</div>
+                        </div>
                     </div>
 
                     <!-- VC Matchmaking Section -->

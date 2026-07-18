@@ -13,7 +13,9 @@ let state = {
     budget: "$10k-$50k (Pre-seed)",
     pain_points: [],
     selected_pain_point: null,
-    sessionId: crypto.randomUUID()
+    sessionId: crypto.randomUUID(),
+    verification_originality: "",
+    verification_analysis: ""
 };
 
 // ── DOM Elements ──
@@ -330,6 +332,9 @@ function handlePipelineEvents(event) {
         updatePipelineNode(data.stage);
     }
     else if (event.type === "idea_generated") {
+        if (data.attempt > 1) {
+            resultStream.innerHTML = "";
+        }
         addStreamCard("idea", `💡 ${data.idea_name}`, data.idea_content);
         setNodeComplete("idea");
     }
@@ -339,10 +344,12 @@ function handlePipelineEvents(event) {
     else if (event.type === "judge_originality_result") {
         addStreamCard("judge", `🧑‍⚖️ Originality: ${data.approved ? 'APPROVED' : 'REJECTED'}`, data.reason);
         setNodeComplete("judge", !data.approved); // pass true for error if rejected
+        state.verification_originality = data.approved ? `✅ APPROVED: ${data.reason}` : `❌ REJECTED: ${data.reason}`;
     }
     else if (event.type === "analysis_done") {
         addStreamCard("analysis", "📊 Market Analysis", data.analysis);
         setNodeComplete("analysis");
+        state.verification_analysis = data.analysis;
     }
     else if (event.type === "debate_round") {
         const title = data.role === "bull" ? `🐂 Bull (Round ${data.round})` : `🐻 Bear (Round ${data.round})`;
@@ -518,6 +525,12 @@ function renderFinalDashboard(data) {
     
     score.textContent = data.score.toFixed(1);
     exp.innerHTML = `<strong>Explanation:</strong><br>${marked.parse(data.explanation)}`;
+
+    const vOrig = document.getElementById("verification-originality");
+    const vAnal = document.getElementById("verification-analysis");
+    if (vOrig) vOrig.innerHTML = marked.parse(state.verification_originality || "No originality check recorded.");
+    if (vAnal) vAnal.innerHTML = marked.parse(state.verification_analysis || "No market analysis recorded.");
+
 }
 
 function resetApp() {
