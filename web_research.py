@@ -109,8 +109,7 @@ def deep_web_research(query: str) -> str:
     """
     sections: dict[str, str] = {}
 
-    # Define research queries targeting Market, Competitors, Opportunity, and Risks
-    # to mirror the detail from the previous separate tools.
+    
     research_queries = [
         (
             "Market Analysis (Size, CAGR, Trends)",
@@ -120,17 +119,17 @@ def deep_web_research(query: str) -> str:
         (
             "Competitor Analysis (Leaders, Funding)",
             f'"{query}" top companies OR competitors OR market leaders OR startups OR funding OR valuation',
-            3, False,  # 3 snippets
+            3, False, 
         ),
         (
             "Opportunity Analysis (Pain Points, Value Prop, Revenue Models)",
             f'"{query}" customer pain points OR unmet needs OR value proposition OR revenue model OR market gaps',
-            3, False,  # 3 snippets
+            3, False, 
         ),
         (
             "Risks & Challenges (Execution, Barriers to Entry)",
             f'"{query}" risks OR challenges OR barriers to entry OR threats OR implementation difficulty',
-            3, False,  # 3 snippets
+            3, False,  
         ),
     ]
 

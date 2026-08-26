@@ -1,13 +1,3 @@
-"""
-Search Client
-=============
-Shared module that provides web search via a configurable backend.
-
-Set ``SEARCH_PROVIDER`` in your ``.env`` to choose the backend:
-
-- ``serper`` (default) — Serper.dev Google Search API (requires ``SERPER_API_KEY``)
-- ``duckduckgo`` — DuckDuckGo (free, no API key needed)
-"""
 
 import os
 import logging
@@ -22,7 +12,6 @@ logger = logging.getLogger(__name__)
 
 SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "serper").lower()
 
-# -- Serper ------------------------------------------------------------------
 
 SERPER_API_KEY = os.getenv("SERPER_API_KEY", "")
 SERPER_URL = "https://google.serper.dev/search"
@@ -55,7 +44,6 @@ def _serper_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
         return []
 
 
-# -- DuckDuckGo --------------------------------------------------------------
 
 def _duckduckgo_search(query: str, max_results: int = 5) -> list[dict[str, Any]]:
     """Run a search via DuckDuckGo (no API key required)."""
